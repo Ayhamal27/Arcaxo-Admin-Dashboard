@@ -7,3 +7,7 @@ dist/
 *.log
 .env
 *.tsbuildinfo
+
+# Claude Code — local/ephemeral artifacts
+.claude/settings.local.json
+.claude/worktrees/
