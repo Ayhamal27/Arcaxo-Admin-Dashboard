@@ -4,8 +4,14 @@ import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { RoleBadge } from '@/components/shared/RoleBadge';
 import { MapPin, Phone, Mail, Cpu, Store, Calendar, User } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+function safeFormat(date: string | null | undefined, fmt: string) {
+  if (!date) return '—';
+  const d = new Date(date);
+  return isValid(d) ? format(d, fmt, { locale: es }) : '—';
+}
 import { UserActionsClient } from './UserActionsClient';
 
 interface UserDetailPageProps {
@@ -165,7 +171,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                 <div>
                   <p className="text-[12px] text-[#667085]">Registrado</p>
                   <p className="text-[13px] text-[#191919]">
-                    {format(new Date(user.auth_created_at), "d MMM yyyy", { locale: es })}
+                    {safeFormat(user.auth_created_at, "d MMM yyyy")}
                   </p>
                 </div>
               </div>
@@ -177,7 +183,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                 <div>
                   <p className="text-[12px] text-[#667085]">Último acceso</p>
                   <p className="text-[13px] text-[#191919]">
-                    {format(new Date(user.auth_last_sign_in_at), "d MMM yyyy, HH:mm", { locale: es })}
+                    {safeFormat(user.auth_last_sign_in_at, "d MMM yyyy, HH:mm")}
                   </p>
                 </div>
               </div>

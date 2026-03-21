@@ -5,8 +5,14 @@ import { useQuery } from '@tanstack/react-query';
 import { listStoreSessionsAction } from '@/actions/stores/list-store-sessions';
 import { listStoreDevicesAction } from '@/actions/stores/list-store-devices';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+function safeFormat(date: string | null | undefined, fmt: string) {
+  if (!date) return '—';
+  const d = new Date(date);
+  return isValid(d) ? format(d, fmt, { locale: es }) : '—';
+}
 
 interface StoreTabsClientProps {
   storeId: string;
@@ -94,7 +100,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
                     </td>
                     <td className="px-6 py-4 text-[14px] text-[#667085]">{s.installer_name ?? '—'}</td>
                     <td className="px-6 py-4 text-[14px] text-[#667085]">
-                      {format(new Date(s.opened_at), 'd MMM yyyy', { locale: es })}
+                      {safeFormat(s.opened_at, 'd MMM yyyy')}
                     </td>
                     <td className="px-6 py-4 text-[14px] text-[#191919]">
                       {s.installed_devices_at_open} / {s.required_devices_count}
@@ -143,9 +149,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
                       </span>
                     </td>
                     <td className="px-6 py-4 text-[14px] text-[#667085]">
-                      {d.installed_at
-                        ? format(new Date(d.installed_at), 'd MMM yyyy', { locale: es })
-                        : '—'}
+                      {safeFormat(d.installed_at, 'd MMM yyyy')}
                     </td>
                   </tr>
                 ))}

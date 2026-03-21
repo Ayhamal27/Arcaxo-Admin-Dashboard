@@ -1,4 +1,4 @@
-import { getServerClient } from './server';
+import { createServerAuthClient } from './server';
 import type {
   RpcAdminListStoresInput,
   RpcAdminGetStoreDetailInput,
@@ -64,7 +64,7 @@ export async function callRpc<T = unknown>(
   rpcName: string,
   params?: Record<string, unknown>
 ): Promise<T> {
-  const client = getServerClient();
+  const client = await createServerAuthClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await client.rpc(rpcName as any, params as any);

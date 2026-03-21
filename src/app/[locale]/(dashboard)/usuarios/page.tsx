@@ -1,26 +1,17 @@
 'use client';
 
-import { use, useCallback, useTransition } from 'react';
+import { use, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
-import { Plus, Search, RotateCcw } from 'lucide-react';
+import { Plus, Search, Pencil, Phone } from 'lucide-react';
 
 import { listUsersAction } from '@/actions/users/list-users';
 import { useUsersStore } from '@/lib/stores/users-store';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
-import {
-  PageActionBar,
-  ActionButton,
-  SearchInput,
-  FilterSelect,
-  ResetButton,
-} from '@/components/layout/PageActionBar';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
+import { RoleBadge } from '@/components/shared/RoleBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { RoleBadge } from '@/components/shared/RoleBadge';
 import { RpcAdminListUsersOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
@@ -31,12 +22,10 @@ export default function UsuariosPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = use(params);
-  const t = useTranslations('users');
-  const tCommon = useTranslations('common');
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  const { filters, pagination, setFilters, resetFilters, setPage } = useUsersStore();
+  const { filters, pagination, setFilters, setPage } = useUsersStore();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['users', filters, pagination.currentPage, pagination.pageSize],
@@ -52,149 +41,182 @@ export default function UsuariosPage({
       }),
   });
 
-  const columns: ColumnDef<RpcAdminListUsersOutputItem>[] = [
-    {
-      key: 'user',
-      header: t('name'),
-      sortable: true,
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <UserAvatar firstName={row.first_name} lastName={row.last_name} role={row.role} />
-          <div>
-            <p className="text-[18px] font-semibold text-[#191919] leading-tight">
-              {row.first_name} {row.last_name}
-            </p>
-            <p className="text-[13px] text-[#667085]">{row.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'role',
-      header: t('role'),
-      render: (row) => <RoleBadge role={row.role} />,
-    },
-    {
-      key: 'devices',
-      header: 'Dispositivos',
-      render: (row) => (
-        <span className="text-[15px] text-[#333]">{row.devices_installed_count}</span>
-      ),
-    },
-    {
-      key: 'stores',
-      header: 'Tiendas',
-      render: (row) => (
-        <span className="text-[15px] text-[#333]">{row.stores_installed_count}</span>
-      ),
-    },
-    {
-      key: 'zone',
-      header: 'Zona',
-      render: (row) => (
-        <span className="text-[15px] text-[#667085]">{row.city_name ?? '—'}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: tCommon('actions'),
-      render: (row) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/${locale}/usuarios/${row.user_id}`}
-            className="px-4 py-2 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors whitespace-nowrap"
-          >
-            Ampliar
-          </Link>
-        </div>
-      ),
-    },
-  ];
-
   const users = data?.users ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pagination.pageSize);
 
   return (
     <div>
-      <Breadcrumb locale={locale} items={[{ label: t('title') }]} />
+      <Breadcrumb locale={locale} items={[{ label: 'Usuarios' }]} />
 
-      <PageActionBar>
-        <ActionButton
-          icon={<Plus className="w-5 h-5" />}
+      {/* Action bar: Nueva Usuario + Search */}
+      <div className="flex gap-[18px] items-center mb-[44px]">
+        <button
           onClick={() => router.push(`/${locale}/usuarios/nuevo`)}
+          className="flex gap-[15px] items-center justify-center h-[50px] w-[205px] bg-[#000AFF] border border-[#0000FF] rounded-[10px] text-white text-[16px] font-medium shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#0000CC] transition-colors"
         >
-          {t('newUser')}
-        </ActionButton>
+          <Plus className="w-5 h-5" />
+          Nueva Usuario
+        </button>
 
-        <SearchInput
-          placeholder={t('searchPlaceholder')}
-          value={filters.search ?? ''}
-          onChange={(e) =>
-            startTransition(() => setFilters({ search: e.target.value || undefined }))
-          }
-          icon={<Search className="w-4 h-4" />}
-        />
+        <div className="relative h-[50px] w-[445px]">
+          <div className="absolute left-[13px] top-[15px]">
+            <Search className="w-5 h-5 text-[#667085]" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search"
+            value={filters.search ?? ''}
+            onChange={(e) =>
+              startTransition(() => setFilters({ search: e.target.value || undefined }))
+            }
+            className="w-full h-full pl-[41px] pr-4 bg-white border border-[#D0D5DD] rounded-[10px] text-[16px] text-[#191919] placeholder:text-[#667085] focus:border-[#0000FF] focus:outline-none"
+          />
+        </div>
+      </div>
 
-        <FilterSelect
-          value={filters.filterRole ?? ''}
-          onChange={(e) => setFilters({ filterRole: e.target.value || undefined })}
-        >
-          <option value="">Todos los roles</option>
-          <option value="owner">Propietario</option>
-          <option value="admin">Administrador</option>
-          <option value="manager">Gestor</option>
-          <option value="installer">Instalador</option>
-          <option value="viewer">Observador</option>
-          <option value="store_owner">Dueño tienda</option>
-        </FilterSelect>
-
-        <FilterSelect
-          value={filters.filterStatus ?? ''}
-          onChange={(e) => setFilters({ filterStatus: e.target.value || undefined })}
-        >
-          <option value="">Todos los estados</option>
-          <option value="active">Activo</option>
-          <option value="inactive">Inactivo</option>
-          <option value="suspended">Suspendido</option>
-        </FilterSelect>
-
-        <ResetButton
-          onClick={resetFilters}
-          icon={<RotateCcw className="w-4 h-4" />}
-          title={tCommon('reset')}
-        />
-      </PageActionBar>
-
+      {/* Table */}
       {isLoading ? (
-        <TableSkeleton rows={8} columns={6} />
+        <TableSkeleton rows={6} columns={7} />
       ) : isError ? (
         <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-12 text-center">
-          <p className="text-[16px] text-[#FF4163]">{tCommon('error')}</p>
+          <p className="text-[16px] text-[#FF4163]">Error al cargar usuarios</p>
+        </div>
+      ) : users.length === 0 ? (
+        <div className="bg-white rounded-[15px] border border-[#E5E5EA] px-[20px] py-[25px]">
+          <EmptyState
+            icon={<Users className="w-12 h-12" />}
+            title="No hay usuarios registrados"
+            description="Crea el primer usuario para comenzar"
+            actionLabel="Nueva Usuario"
+            onAction={() => router.push(`/${locale}/usuarios/nuevo`)}
+          />
         </div>
       ) : (
-        <>
-          <DataTable
-            data={users}
-            columns={columns}
-            isEmpty={users.length === 0}
-            emptyContent={
-              <EmptyState
-                icon={<Users className="w-12 h-12" />}
-                title="No hay usuarios registrados"
-                description="Crea el primer usuario para comenzar"
-                actionLabel={t('newUser')}
-                onAction={() => router.push(`/${locale}/usuarios/nuevo`)}
-              />
-            }
-            onRowClick={(row) => router.push(`/${locale}/usuarios/${row.user_id}`)}
-          />
+        <div className="bg-white rounded-[15px] border border-[#E5E5EA] px-[20px] py-[25px]">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="text-left pl-[21px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[260px]">
+                  Usuario
+                </th>
+                <th className="text-left pl-[41px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[219px]">
+                  Rol
+                </th>
+                <th className="text-center px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[141px]">
+                  Dispositivos instalados
+                </th>
+                <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[141px]">
+                  Tiendas instaladas
+                </th>
+                <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-bold text-[#161616] w-[161px]">
+                  Telefono
+                </th>
+                <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[197px]">
+                  Zona
+                </th>
+                <th className="text-center p-[10px] text-[18px] font-semibold text-[#161616] w-[198px]">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr
+                  key={user.user_id}
+                  className="h-[74px] hover:bg-[#FAFAFF] transition-colors"
+                >
+                  {/* Usuario */}
+                  <td className="pl-[22px] pr-[30px]">
+                    <div className="flex gap-[20px] items-center">
+                      <UserAvatar
+                        firstName={user.first_name}
+                        lastName={user.last_name}
+                        role={user.role}
+                      />
+                      <span className="text-[18px] text-[#404D61] whitespace-nowrap">
+                        {user.first_name} {user.last_name}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Rol */}
+                  <td className="px-[15px]">
+                    <div className="flex justify-center">
+                      <RoleBadge role={user.role} />
+                    </div>
+                  </td>
+
+                  {/* Dispositivos instalados */}
+                  <td className="p-[15px]">
+                    <span className="text-[18px] text-[#404D61]">
+                      {user.devices_installed_count}
+                    </span>
+                  </td>
+
+                  {/* Tiendas instaladas */}
+                  <td className="p-[15px]">
+                    <span className="text-[18px] text-[#404D61]">
+                      {user.stores_installed_count}
+                    </span>
+                  </td>
+
+                  {/* Telefono */}
+                  <td className="p-[15px]">
+                    <span className="text-[18px] text-[#404D61] whitespace-nowrap">
+                      {user.phone_country_code && user.phone_number
+                        ? `${user.phone_country_code} ${user.phone_number}`
+                        : '—'}
+                    </span>
+                  </td>
+
+                  {/* Zona */}
+                  <td className="p-[15px]">
+                    <span className="text-[18px] text-[#404D61]">
+                      {user.city_name ?? '—'}
+                    </span>
+                  </td>
+
+                  {/* Acciones */}
+                  <td className="p-[10px]">
+                    <div className="flex gap-[20px] items-center justify-center">
+                      <Link
+                        href={`/${locale}/usuarios/${user.user_id}`}
+                        className="flex items-center justify-center h-[34px] w-[80px] border border-[#0000FF] rounded-[8px] text-[15px] font-medium text-[#0000FF] hover:bg-[#F0F0FF] transition-colors"
+                      >
+                        Ampliar
+                      </Link>
+                      <Link
+                        href={`/${locale}/usuarios/${user.user_id}`}
+                        className="flex items-center justify-center h-[34px] w-[40px] border border-[#D0D5DD] rounded-[8px] text-[#667085] hover:bg-[#F9F9F9] transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Link>
+                      <a
+                        href={
+                          user.phone_number
+                            ? `tel:${user.phone_country_code ?? ''}${user.phone_number}`
+                            : undefined
+                        }
+                        className="flex items-center justify-center h-[34px] w-[40px] bg-[#0000FF] rounded-[8px] text-white hover:bg-[#0000CC] transition-colors"
+                        onClick={(e) => !user.phone_number && e.preventDefault()}
+                      >
+                        <Phone className="w-5 h-5" />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Pagination inside the card */}
           <Pagination
             currentPage={pagination.currentPage}
             totalPages={totalPages}
             onPageChange={setPage}
           />
-        </>
+        </div>
       )}
     </div>
   );
@@ -209,23 +231,23 @@ function UserAvatar({
   lastName: string;
   role: string;
 }) {
-  const initial = (firstName?.[0] ?? '') + (lastName?.[0] ?? '');
+  const initial = ((firstName?.[0] ?? '') + (lastName?.[0] ?? '')).toUpperCase();
   const bgColors: Record<string, string> = {
-    owner: '#0000FF',
-    admin: '#1E40AF',
-    manager: '#7C3AED',
-    installer: '#0891B2',
-    viewer: '#9CA3AF',
+    owner: '#53009C',
+    admin: '#11978c',
+    manager: '#bb069d',
+    installer: '#0000FF',
+    viewer: '#c86f0a',
     store_owner: '#228D70',
   };
   const bg = bgColors[role] ?? '#53009C';
 
   return (
     <div
-      className="w-[40px] h-[40px] rounded-full flex items-center justify-center text-white text-[14px] font-semibold flex-shrink-0"
+      className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white text-[12px] font-semibold flex-shrink-0"
       style={{ backgroundColor: bg }}
     >
-      {initial.toUpperCase()}
+      {initial}
     </div>
   );
 }

@@ -30,16 +30,21 @@ export async function listUsersAction(params: ListUsersParams = {}): Promise<Lis
     sortOrder = 'asc',
   } = params;
 
-  const rows = await rpcAdminListUsers({
-    p_page: page,
-    p_page_size: pageSize,
-    p_search: search ?? null,
-    p_filter_role: filterRole ?? null,
-    p_filter_status: filterStatus ?? null,
-    p_sort_by: sortBy,
-    p_sort_order: sortOrder,
-  });
+  try {
+    const rows = await rpcAdminListUsers({
+      p_page: page,
+      p_page_size: pageSize,
+      p_search: search ?? null,
+      p_filter_role: filterRole ?? null,
+      p_filter_status: filterStatus ?? null,
+      p_sort_by: sortBy,
+      p_sort_order: sortOrder,
+    });
 
-  const total = rows[0]?.total_count ?? 0;
-  return { users: rows, total, page };
+    const total = rows[0]?.total_count ?? 0;
+    return { users: rows, total, page };
+  } catch (error) {
+    console.error('[listUsersAction] Error:', error);
+    return { users: [], total: 0, page };
+  }
 }

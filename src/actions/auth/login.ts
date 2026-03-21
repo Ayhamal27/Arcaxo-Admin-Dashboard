@@ -53,19 +53,26 @@ export async function loginAction(formData: unknown): Promise<LoginResponse> {
       return { success: false, error: 'Failed to verify access permissions' };
     }
 
-    const accessGateResult = accessGateData as unknown as UserAccessGateResult;
+    const rawGate = Array.isArray(accessGateData) ? accessGateData[0] : accessGateData;
+    const accessGateResult = rawGate as unknown as UserAccessGateResult;
 
-    if (!accessGateResult.can_access) {
+    // The RPC is mobile-app-centric (can_access requires installer role).
+    // For the web panel we check access ourselves using the returned profile data.
+    const WEB_PANEL_ROLES = ['owner', 'admin'];
+
+    if (!accessGateResult.has_profile) {
       await supabase.auth.signOut();
+      return { success: false, error: 'No profile found for this account' };
+    }
 
-      const errorMessage =
-        accessGateResult.access_code === 'role_not_authorized'
-          ? 'Your role does not have access to this dashboard'
-          : accessGateResult.access_code === 'status_inactive'
-            ? 'Your account is inactive'
-            : 'Access denied';
+    if (accessGateResult.status !== 'active') {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Your account is inactive' };
+    }
 
-      return { success: false, error: errorMessage, accessCode: accessGateResult.access_code };
+    if (!WEB_PANEL_ROLES.includes(accessGateResult.role ?? '')) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Your role does not have access to this dashboard', accessCode: accessGateResult.access_code };
     }
 
     return {

@@ -1,42 +1,146 @@
 'use client';
 
-import { use, useTransition } from 'react';
+import { use, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
-import { Search, RotateCcw, Cpu } from 'lucide-react';
+import { Search, Cpu, Phone, Cpu as ChipIcon, Eye, X, Copy, Check } from 'lucide-react';
 
 import { listSensorsAction } from '@/actions/sensors/list-sensors';
 import { useSensorsStore } from '@/lib/stores/sensors-store';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
-import {
-  PageActionBar,
-  SearchInput,
-  FilterSelect,
-  ResetButton,
-} from '@/components/layout/PageActionBar';
-import { DataTable, ColumnDef } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { RpcAdminListSensorsOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, isValid } from 'date-fns';
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  installed: { label: 'Instalado', className: 'bg-[#E6F9F1] text-[#228D70]' },
-  failed: { label: 'Fallido', className: 'bg-[#FFE8EC] text-[#FF4163]' },
-  uninstalled: { label: 'Desinstalado', className: 'bg-[#F5F5F5] text-[#667085]' },
-  connecting: { label: 'Conectando', className: 'bg-[#FFF9E6] text-[#8B7200]' },
-};
+function safeFormat(date: string | null | undefined, fmt: string) {
+  if (!date) return '—';
+  const d = new Date(date);
+  return isValid(d) ? format(d, fmt) : '—';
+}
 
-function SensorStatusBadge({ status }: { status: string }) {
-  const config = STATUS_CONFIG[status] ?? { label: status, className: 'bg-[#F5F5F5] text-[#667085]' };
+function ActivityDot({ status, isActive }: { status: string; isActive: boolean }) {
+  let color = '#9CA3AF';
+  if (status === 'installed' && isActive) color = '#228D70';
+  else if (status === 'installed' && !isActive) color = '#FF4163';
+  else if (status === 'connecting') color = '#F59E0B';
+  else if (status === 'failed') color = '#FF4163';
+  else if (status === 'uninstalled') color = '#FF4163';
+
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium ${config.className}`}>
-      {config.label}
-    </span>
+    <span
+      className="inline-block w-[14px] h-[14px] rounded-full flex-shrink-0"
+      style={{
+        backgroundColor: `${color}CC`,
+        boxShadow: `0 0 5px 2px ${color}66, 0 0 10px 3px ${color}33`,
+      }}
+    />
+  );
+}
+
+function LocationFilledIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
+    </svg>
+  );
+}
+
+interface PhoneModalSensor {
+  serial: string;
+  store_name?: string | null;
+  installer_name?: string | null;
+  installer_phone?: string | null;
+  city_name?: string | null;
+}
+
+function PhoneModal({ sensor, onClose }: { sensor: PhoneModalSensor; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const phone = sensor.installer_phone ?? null;
+
+  const handleCopy = () => {
+    if (!phone) return;
+    navigator.clipboard.writeText(phone).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-[15px] p-6 w-full max-w-[380px] shadow-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-[40px] h-[40px] rounded-full bg-[#0000FF] flex items-center justify-center">
+              <Phone className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-[16px] font-semibold text-[#191919]">Contactar Instalador</p>
+              {sensor.store_name && (
+                <p className="text-[13px] text-[#667085]">{sensor.store_name}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-[32px] h-[32px] flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors text-[#667085]"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Installer info */}
+        {sensor.installer_name ? (
+          <div className="bg-[#F9F9FF] rounded-[10px] px-4 py-3 mb-4 space-y-1">
+            <p className="text-[15px] font-semibold text-[#191919]">{sensor.installer_name}</p>
+            {sensor.city_name && (
+              <p className="text-[13px] text-[#667085]">{sensor.city_name}</p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-[#F9F9F9] rounded-[10px] px-4 py-3 mb-4">
+            <p className="text-[13px] text-[#9CA3AF]">Sin instalador asignado</p>
+          </div>
+        )}
+
+        {/* Phone number */}
+        {phone ? (
+          <>
+            <div className="bg-[#F5F5F5] rounded-[10px] px-4 py-3 flex items-center justify-between mb-4">
+              <span className="text-[18px] font-semibold text-[#191919] tracking-wide">{phone}</span>
+              <button
+                onClick={handleCopy}
+                className="ml-3 flex items-center gap-1.5 text-[13px] text-[#0000FF] hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copiado' : 'Copiar'}
+              </button>
+            </div>
+            <a
+              href={`tel:${phone}`}
+              className="flex items-center justify-center gap-2 w-full h-[44px] bg-[#0000FF] text-white text-[15px] font-medium rounded-[10px] hover:bg-[#0000CC] transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+              Llamar
+            </a>
+          </>
+        ) : (
+          <div className="text-center py-3 mb-1">
+            <p className="text-[14px] text-[#9CA3AF]">Teléfono no disponible</p>
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-3 w-full h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[10px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -46,12 +150,11 @@ export default function DispositivosPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = use(params);
-  const t = useTranslations('devices');
-  const tCommon = useTranslations('common');
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [phoneModal, setPhoneModal] = useState<PhoneModalSensor | null>(null);
 
-  const { filters, pagination, setFilters, resetFilters, setPage } = useSensorsStore();
+  const { filters, pagination, setFilters, setPage } = useSensorsStore();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['sensors', filters, pagination.currentPage, pagination.pageSize],
@@ -66,143 +169,179 @@ export default function DispositivosPage({
       }),
   });
 
-  const columns: ColumnDef<RpcAdminListSensorsOutputItem>[] = [
-    {
-      key: 'serial',
-      header: t('serialNumber'),
-      sortable: true,
-      render: (row) => (
-        <div>
-          <p className="text-[15px] font-semibold text-[#191919]">{row.serial}</p>
-          <p className="text-[12px] text-[#667085] font-mono">{row.mac_normalized}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: t('status'),
-      render: (row) => <SensorStatusBadge status={row.current_status} />,
-    },
-    {
-      key: 'active',
-      header: 'Activo',
-      render: (row) => (
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium ${
-            row.is_active
-              ? 'bg-[#E6F9F1] text-[#228D70]'
-              : 'bg-[#F5F5F5] text-[#667085]'
-          }`}
-        >
-          {row.is_active ? 'Sí' : 'No'}
-        </span>
-      ),
-    },
-    {
-      key: 'store',
-      header: t('store'),
-      render: (row) => (
-        <div>
-          <p className="text-[15px] text-[#191919]">{row.store_name ?? '—'}</p>
-          {row.city_name && (
-            <p className="text-[12px] text-[#667085]">{row.city_name}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'installed_at',
-      header: t('installDate'),
-      render: (row) => (
-        <span className="text-[14px] text-[#667085]">
-          {row.installed_at
-            ? format(new Date(row.installed_at), 'd MMM yyyy', { locale: es })
-            : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: tCommon('actions'),
-      render: (row) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Link
-            href={`/${locale}/dispositivos/${row.sensor_id}`}
-            className="px-4 py-2 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors whitespace-nowrap"
-          >
-            Ampliar
-          </Link>
-        </div>
-      ),
-    },
-  ];
-
   const sensors = data?.sensors ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pagination.pageSize);
 
   return (
     <div>
-      <Breadcrumb locale={locale} items={[{ label: t('title') }]} />
+      <Breadcrumb locale={locale} items={[{ label: 'Dispositivos' }]} />
 
-      <PageActionBar>
-        <SearchInput
-          placeholder={t('searchPlaceholder')}
-          value={filters.search ?? ''}
-          onChange={(e) =>
-            startTransition(() => setFilters({ search: e.target.value || undefined }))
-          }
-          icon={<Search className="w-4 h-4" />}
-        />
+      {/* Action bar */}
+      <div className="flex gap-[18px] items-center mb-[44px]">
+        <div className="relative h-[50px] w-[445px]">
+          <div className="absolute left-[13px] top-[15px]">
+            <Search className="w-5 h-5 text-[#667085]" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search"
+            value={filters.search ?? ''}
+            onChange={(e) =>
+              startTransition(() => setFilters({ search: e.target.value || undefined }))
+            }
+            className="w-full h-full pl-[41px] pr-4 bg-white border border-[#D0D5DD] rounded-[10px] text-[16px] text-[#191919] placeholder:text-[#667085] focus:border-[#0000FF] focus:outline-none"
+          />
+        </div>
+      </div>
 
-        <FilterSelect
-          value={filters.filterIsActive === undefined ? '' : String(filters.filterIsActive)}
-          onChange={(e) => {
-            const val = e.target.value;
-            setFilters({
-              filterIsActive: val === '' ? undefined : val === 'true',
-            });
-          }}
-        >
-          <option value="">Todos</option>
-          <option value="true">Activos</option>
-          <option value="false">Inactivos</option>
-        </FilterSelect>
-
-        <ResetButton
-          onClick={resetFilters}
-          icon={<RotateCcw className="w-4 h-4" />}
-          title={tCommon('reset')}
-        />
-      </PageActionBar>
-
+      {/* Table */}
       {isLoading ? (
-        <TableSkeleton rows={8} columns={6} />
+        <TableSkeleton rows={6} columns={7} />
       ) : isError ? (
         <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-12 text-center">
-          <p className="text-[16px] text-[#FF4163]">{tCommon('error')}</p>
+          <p className="text-[16px] text-[#FF4163]">Error al cargar dispositivos</p>
+        </div>
+      ) : sensors.length === 0 ? (
+        <div className="bg-white rounded-[15px] border border-[#E5E5EA] px-[20px] py-[25px]">
+          <EmptyState
+            icon={<Cpu className="w-12 h-12" />}
+            title="No hay dispositivos registrados"
+            description="Los dispositivos aparecerán aquí una vez instalados"
+          />
         </div>
       ) : (
-        <>
-          <DataTable
-            data={sensors}
-            columns={columns}
-            isEmpty={sensors.length === 0}
-            emptyContent={
-              <EmptyState
-                icon={<Cpu className="w-12 h-12" />}
-                title="No hay dispositivos registrados"
-                description="Los dispositivos aparecerán aquí una vez instalados"
-              />
-            }
-            onRowClick={(row) => router.push(`/${locale}/dispositivos/${row.sensor_id}`)}
-          />
+        <div className="bg-white rounded-[15px] border border-[#E5E5EA] px-[20px] py-[25px]">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="text-center p-[10px] text-[18px] font-semibold text-[#161616] w-[90px] min-w-[90px]">
+                    Actividad
+                  </th>
+                  <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[200px] min-w-[180px]">
+                    Serial del Dispositivo
+                  </th>
+                  <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[160px] min-w-[140px]">
+                    Instalador
+                  </th>
+                  <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[160px] min-w-[140px]">
+                    Tienda
+                  </th>
+                  <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[170px] min-w-[150px]">
+                    Zona
+                  </th>
+                  <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[140px] min-w-[120px]">
+                    Ultima visita
+                  </th>
+                  <th className="text-center p-[10px] text-[18px] font-semibold text-[#161616] w-[130px] min-w-[130px]">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sensors.map((row) => (
+                  <tr
+                    key={row.sensor_id}
+                    className="h-[74px] hover:bg-[#FAFAFF] transition-colors cursor-pointer"
+                    onClick={() => router.push(`/${locale}/dispositivos/${row.sensor_id}`)}
+                  >
+                    {/* Actividad */}
+                    <td className="p-[10px]">
+                      <div className="flex items-center justify-center">
+                        <ActivityDot status={row.current_status} isActive={row.is_active} />
+                      </div>
+                    </td>
+
+                    {/* Serial */}
+                    <td className="p-[15px]">
+                      <div className="flex items-center gap-[6px]">
+                        <ChipIcon className="w-[18px] h-[18px] text-[#667085] flex-shrink-0" />
+                        <span className="text-[18px] text-[#404D61]">{row.serial}</span>
+                      </div>
+                    </td>
+
+                    {/* Instalador */}
+                    <td className="pl-[15px] pr-[10px]">
+                      <span className="text-[18px] text-[#404D61]">—</span>
+                    </td>
+
+                    {/* Tienda */}
+                    <td className="px-[15px]">
+                      <span className="text-[18px] text-[#404D61]">{row.store_name ?? '—'}</span>
+                    </td>
+
+                    {/* Zona */}
+                    <td className="px-[15px]">
+                      <div className="flex items-center gap-[6px]">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[18px] text-[#404D61] leading-[22px] whitespace-nowrap">
+                            {row.city_name ?? '—'}
+                          </span>
+                        </div>
+                        {row.city_name && (
+                          <LocationFilledIcon className="w-[14px] h-[14px] text-[#0000FF] flex-shrink-0" />
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Ultima visita */}
+                    <td className="px-[15px]">
+                      <span className="text-[18px] text-[#404D61]">
+                        {safeFormat(row.installed_at, 'dd/MM/yyyy')}
+                      </span>
+                    </td>
+
+                    {/* Acciones */}
+                    <td
+                      className="px-[10px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-center gap-[16px]">
+                        {/* Ver detalle */}
+                        <Link
+                          href={`/${locale}/dispositivos/${row.sensor_id}`}
+                          className="flex items-center justify-center h-[36px] w-[36px] border border-[#0000FF] rounded-[8px] text-[#0000FF] hover:bg-[#F0F0FF] transition-colors flex-shrink-0"
+                          title="Ver detalle"
+                        >
+                          <Eye className="w-[18px] h-[18px]" />
+                        </Link>
+
+                        {/* Llamar */}
+                        <button
+                          className="flex items-center justify-center h-[36px] w-[36px] bg-[#0000FF] rounded-[8px] text-white hover:bg-[#0000CC] transition-colors flex-shrink-0 cursor-pointer"
+                          title="Ver teléfono del instalador"
+                          onClick={() =>
+                            setPhoneModal({
+                              serial: row.serial,
+                              store_name: row.store_name,
+                              installer_name: row.installer_name,
+                              installer_phone: row.installer_phone,
+                              city_name: row.city_name,
+                            })
+                          }
+                        >
+                          <Phone className="w-[18px] h-[18px]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <Pagination
             currentPage={pagination.currentPage}
             totalPages={totalPages}
             onPageChange={setPage}
           />
-        </>
+        </div>
+      )}
+
+      {/* Phone modal */}
+      {phoneModal && (
+        <PhoneModal sensor={phoneModal} onClose={() => setPhoneModal(null)} />
       )}
     </div>
   );

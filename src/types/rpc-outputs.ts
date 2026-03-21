@@ -299,6 +299,8 @@ export interface RpcAdminListSensorsOutputItem {
   current_status: string;
   is_active: boolean;
   store_name?: string | null;
+  installer_name?: string | null;
+  installer_phone?: string | null;
   city_name?: string | null;
   country_code?: string | null;
   installed_at?: string | null;

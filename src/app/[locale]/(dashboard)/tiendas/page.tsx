@@ -22,10 +22,16 @@ import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { RpcAdminListStoresOutputItem } from '@/types/rpc-outputs';
 import { Store } from 'lucide-react';
-import Image from 'next/image';
+import { StoreImage } from '@/components/shared/StoreImage';
 import Link from 'next/link';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+function safeFormat(date: string | null | undefined, fmt: string) {
+  if (!date) return '—';
+  const d = new Date(date);
+  return isValid(d) ? format(d, fmt, { locale: es }) : '—';
+}
 
 export default function TiendasPage({
   params,
@@ -68,19 +74,7 @@ export default function TiendasPage({
       sortable: true,
       render: (row) => (
         <div className="flex items-center gap-3">
-          {row.facade_photo_url ? (
-            <Image
-              src={row.facade_photo_url}
-              alt={row.name}
-              width={71}
-              height={71}
-              className="rounded-[5px] object-cover flex-shrink-0"
-            />
-          ) : (
-            <div className="w-[71px] h-[71px] rounded-[5px] bg-[#F0F0F5] flex items-center justify-center flex-shrink-0">
-              <Store className="w-6 h-6 text-[#D0D5DD]" />
-            </div>
-          )}
+          <StoreImage src={row.facade_photo_url} alt={row.name} />
           <div>
             <p className="text-[18px] font-semibold text-[#191919] leading-tight">{row.name}</p>
           </div>
@@ -124,9 +118,7 @@ export default function TiendasPage({
       sortable: true,
       render: (row) => (
         <span className="text-[15px] text-[#333]">
-          {row.last_visit_date
-            ? format(new Date(row.last_visit_date), 'dd MMM yyyy', { locale: es })
-            : '—'}
+          {safeFormat(row.last_visit_date, 'dd MMM yyyy')}
         </span>
       ),
     },

@@ -6,5 +6,6 @@ import { RpcAdminGetStoreDetailOutput } from '@/types/rpc-outputs';
 export async function getStoreDetailAction(
   storeId: string
 ): Promise<RpcAdminGetStoreDetailOutput> {
-  return rpcAdminGetStoreDetail({ p_store_id: storeId });
+  const result = await rpcAdminGetStoreDetail({ p_store_id: storeId });
+  return Array.isArray(result) ? result[0] : result;
 }
