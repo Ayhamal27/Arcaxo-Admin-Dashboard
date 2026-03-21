@@ -27,6 +27,8 @@ export interface RpcAdminListStoresOutputItem {
   phone_country_code?: string;
   phone_number?: string;
   last_visit_date?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   total_count: number;
 }
 
