@@ -1,6 +1,8 @@
 import { createServerAuthClient } from './server';
 import type {
   RpcAdminListStoresInput,
+  RpcAdminMapListStoresInput,
+  RpcAdminMapStoreClustersInput,
   RpcAdminGetStoreDetailInput,
   RpcAdminUpdateStoreInput,
   RpcAdminToggleStoreActiveInput,
@@ -11,6 +13,7 @@ import type {
   RpcAdminDeleteUserInput,
   RpcUpsertUserProfileInput,
   RpcUserAccessGateInput,
+  RpcUserActiveSessionInput,
   RpcGeoListRegionsInput,
   RpcGeoListSubregionsInput,
   RpcGeoListCountriesInput,
@@ -19,6 +22,8 @@ import type {
   RpcAdminListSensorsInput,
   RpcAdminGetSensorDetailInput,
   RpcAdminDecommissionSensorInput,
+  RpcAdminListSensorInstallationsInput,
+  RpcAdminListSensorEventsInput,
   RpcAdminListStoreSessionsInput,
   RpcAdminListStoreSensorsInput,
   RpcStoreMaintenanceOpenInput,
@@ -26,9 +31,12 @@ import type {
   RpcStoreMaintenanceUnassignInput,
   RpcStoreMaintenanceCloseInput,
   RpcSensorUnlinkInput,
+  RpcGetNearbyInstallersInput,
 } from '@/types/rpc-inputs';
 import type {
   RpcAdminListStoresOutputItem,
+  RpcAdminMapListStoresOutputItem,
+  RpcAdminMapStoreClustersOutputItem,
   RpcAdminGetStoreDetailOutput,
   RpcAdminUpdateStoreOutput,
   RpcAdminToggleStoreActiveOutput,
@@ -39,6 +47,7 @@ import type {
   RpcAdminDeleteUserOutput,
   RpcUpsertUserProfileOutput,
   RpcUserAccessGateOutput,
+  RpcUserActiveSessionOutput,
   RpcGeoListRegionsOutputItem,
   RpcGeoListSubregionsOutputItem,
   RpcGeoListCountriesOutputItem,
@@ -47,12 +56,15 @@ import type {
   RpcAdminListSensorsOutputItem,
   RpcAdminGetSensorDetailOutput,
   RpcAdminDecommissionSensorOutput,
+  RpcAdminListSensorInstallationsOutputItem,
+  RpcAdminListSensorEventsOutputItem,
   RpcAdminListStoreSessionsOutputItem,
   RpcAdminListStoreSensorsOutputItem,
   RpcStoreMaintenanceOpenOutput,
   RpcStoreMaintenanceAssignOutput,
   RpcStoreMaintenanceCloseOutput,
   RpcSensorUnlinkOutput,
+  RpcGetNearbyInstallersOutputItem,
 } from '@/types/rpc-outputs';
 
 /**
@@ -85,6 +97,18 @@ export const rpcCreateStore = (p: RpcCreateStoreInput) =>
 export const rpcAdminListStores = (p: RpcAdminListStoresInput = {}) =>
   callRpc<RpcAdminListStoresOutputItem[]>(
     'rpc_admin_list_stores',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcAdminMapListStores = (p: RpcAdminMapListStoresInput) =>
+  callRpc<RpcAdminMapListStoresOutputItem[]>(
+    'rpc_admin_map_list_stores',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcAdminMapStoreClusters = (p: RpcAdminMapStoreClustersInput) =>
+  callRpc<RpcAdminMapStoreClustersOutputItem[]>(
+    'rpc_admin_map_store_clusters',
     p as unknown as Record<string, unknown>
   );
 
@@ -144,6 +168,12 @@ export const rpcUserAccessGate = (p: RpcUserAccessGateInput = {}) =>
     p as unknown as Record<string, unknown>
   );
 
+export const rpcUserActiveSession = (p: RpcUserActiveSessionInput = {}) =>
+  callRpc<RpcUserActiveSessionOutput>(
+    'rpc_user_active_session',
+    p as unknown as Record<string, unknown>
+  );
+
 // ─── GEOGRAPHY ───────────────────────────────────────────────────────────────
 
 export const rpcGeoListRegions = (_p: RpcGeoListRegionsInput = {}) =>
@@ -199,6 +229,18 @@ export const rpcSensorUnlink = (p: RpcSensorUnlinkInput) =>
     p as unknown as Record<string, unknown>
   );
 
+export const rpcAdminListSensorInstallations = (p: RpcAdminListSensorInstallationsInput) =>
+  callRpc<RpcAdminListSensorInstallationsOutputItem[]>(
+    'rpc_admin_list_sensor_installations',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcAdminListSensorEvents = (p: RpcAdminListSensorEventsInput) =>
+  callRpc<RpcAdminListSensorEventsOutputItem[]>(
+    'rpc_admin_list_sensor_events',
+    p as unknown as Record<string, unknown>
+  );
+
 // ─── STORE SESSIONS & SENSORS ─────────────────────────────────────────────────
 
 export const rpcAdminListStoreSessions = (p: RpcAdminListStoreSessionsInput) =>
@@ -236,5 +278,13 @@ export const rpcStoreMaintenanceUnassign = (p: RpcStoreMaintenanceUnassignInput)
 export const rpcStoreMaintenanceClose = (p: RpcStoreMaintenanceCloseInput) =>
   callRpc<RpcStoreMaintenanceCloseOutput>(
     'rpc_store_maintenance_close',
+    p as unknown as Record<string, unknown>
+  );
+
+// ─── INSTALLER LOCATIONS ──────────────────────────────────────────────────────
+
+export const rpcGetNearbyInstallers = (p: RpcGetNearbyInstallersInput) =>
+  callRpc<RpcGetNearbyInstallersOutputItem[]>(
+    'rpc_get_nearby_installers',
     p as unknown as Record<string, unknown>
   );

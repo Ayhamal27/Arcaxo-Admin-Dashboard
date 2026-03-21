@@ -66,6 +66,45 @@ export interface RpcAdminToggleStoreActiveOutput {
   error?: string | null;
 }
 
+export interface RpcAdminMapListStoresOutputItem {
+  store_id: string;
+  name: string;
+  address?: string;
+  google_maps_url?: string;
+  authorized_devices_count: number;
+  status: string;
+  active: boolean;
+  install_enabled: boolean;
+  country_code?: string;
+  city_name?: string;
+  state_name?: string;
+  distance_meters: number;
+  latitude: number;
+  longitude: number;
+  has_open_install_session: boolean;
+  has_open_maintenance_session: boolean;
+  has_more: boolean;
+  effective_radius_meters: number;
+  radius_clamped: boolean;
+}
+
+export interface RpcAdminMapStoreClustersOutputItem {
+  cluster_key: string;
+  cluster_zoom: number;
+  tile_x: number;
+  tile_y: number;
+  cluster_latitude: number;
+  cluster_longitude: number;
+  stores_count: number;
+  new_store_count: number;
+  operational_count: number;
+  maintenance_count: number;
+  inactive_count: number;
+  sample_store_ids: string[];
+  has_more: boolean;
+  effective_limit: number;
+}
+
 export interface RpcAdminListStoreSessionsOutputItem {
   session_id: string;
   session_type: string;
@@ -303,9 +342,30 @@ export interface RpcAdminListSensorsOutputItem {
   installer_phone?: string | null;
   city_name?: string | null;
   country_code?: string | null;
+  google_maps_url?: string | null;
   installed_at?: string | null;
+  last_event_date?: string | null;
   decommissioned_at?: string | null;
   total_count: number;
+}
+
+export interface SensorInstallationHistoryItem {
+  installation_id: string;
+  store_id: string;
+  store_name?: string | null;
+  status: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface SensorEventItem {
+  event_id: number;
+  stage: string;
+  actor_name?: string | null;
+  evidence_photo_url?: string | null;
+  ble_rssi?: number | null;
+  error_code?: string | null;
+  created_at: string;
 }
 
 export interface RpcAdminGetSensorDetailOutput {
@@ -326,6 +386,55 @@ export interface RpcAdminGetSensorDetailOutput {
   country_code?: string | null;
   created_at: string;
   updated_at: string;
+  installations?: SensorInstallationHistoryItem[] | null;
+  recent_events?: SensorEventItem[] | null;
+}
+
+export interface RpcAdminListSensorInstallationsOutputItem {
+  installation_id: string;
+  store_id: string;
+  store_name?: string | null;
+  installer_name?: string | null;
+  status: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  failed_at?: string | null;
+  cancelled_at?: string | null;
+  uninstalled_at?: string | null;
+  total_count: number;
+}
+
+export interface RpcAdminListSensorEventsOutputItem {
+  event_id: number;
+  installation_id: string;
+  stage: string;
+  actor_name?: string | null;
+  evidence_photo_url?: string | null;
+  ble_rssi?: number | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  created_at: string;
+  total_count: number;
+}
+
+export interface RpcGetNearbyInstallersOutputItem {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  phone_country_code?: string | null;
+  phone_number?: string | null;
+  latitude: number;
+  longitude: number;
+  accuracy_meters?: number | null;
+  location_source?: string | null;
+  location_recorded_at: string;
+  active_session_store_id?: string | null;
+  active_session_store_name?: string | null;
+  active_session_type?: string | null;
+  distance_meters: number;
+  total_count: number;
 }
 
 export interface RpcAdminDecommissionSensorOutput {

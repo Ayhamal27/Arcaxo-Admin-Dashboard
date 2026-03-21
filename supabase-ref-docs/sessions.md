@@ -240,7 +240,7 @@ Abre una sesión de mantenimiento para el instalador asignado a la solicitud.
 
 ### `rpc_store_maintenance_session_close(p_store_id, p_session_id?)`
 
-Cierra la sesión de mantenimiento del instalador. La solicitud de mantenimiento puede permanecer abierta para nueva revisión.
+Cierra exitosamente la sesión de mantenimiento. Cuando se completa, **auto-cierra el request de mantenimiento** asociado y **restaura el store a `operational`** automáticamente. El admin NO necesita llamar `rpc_store_maintenance_close` por separado en el flujo normal.
 
 **Permisos:** `authenticated` (solo `installer` dueño), `service_role`.
 
@@ -249,7 +249,57 @@ Cierra la sesión de mantenimiento del instalador. La solicitud de mantenimiento
 | Parámetro | Tipo | Notas |
 |---|---|---|
 | `p_store_id` | `uuid` | Requerido |
-| `p_session_id` | `uuid` | Opcional |
+| `p_session_id` | `uuid` | Opcional; si NULL usa la sesión open del installer |
+
+**Retorna:** `session_id`, `status` (`completed`), `required_devices_count`, `current_installed_devices_count`, `remaining_devices_count`, `result`, `error`.
+
+**Lógica de cierre:**
+
+```mermaid
+flowchart TD
+    A[rpc_store_maintenance_session_close] --> B[Busca sesión open del installer]
+    B --> C{remaining_devices_count > 0?}
+    C -- Sí --> ERR[ERROR: faltan sensores]
+    C -- No --> D[Sesión → completed]
+    D --> E[AUTO-CIERRA maintenance_request → closed]
+    E --> F[UPDATE stores.status = 'operational'\nWHERE status = 'maintenance']
+    F --> G[Retorna remaining_devices_count = 0]
+```
+
+**Restricciones frontend:**
+- Solo el installer dueño de la sesión puede cerrarla.
+- Si `remaining_devices_count > 0`: **ERROR** `'cannot close maintenance session %: % sensors still required by contract'`. No se puede forzar el cierre con sensores pendientes; usar `rpc_store_maintenance_session_cancel` si es necesario abortar.
+- El auto-cierre del request y la restauración del store son atómicos con el cierre de sesión.
+
+---
+
+### `rpc_store_maintenance_session_cancel(p_store_id, p_session_id?, p_cancel_reason, p_cancel_report, p_idempotency_key?)`
+
+Cancela una sesión de mantenimiento abierta cuando el instalador no puede completar el trabajo. A diferencia de `rpc_store_maintenance_session_close`, **no cierra el request de mantenimiento** — la tienda permanece en `status = 'maintenance'` para que otro instalador pueda retomar.
+
+**Permisos:** `authenticated` (solo `installer`), `service_role`.
+
+**Parámetros:**
+
+| Parámetro | Tipo | Requerido | Notas |
+|---|---|---|---|
+| `p_store_id` | `uuid` | **Sí** | |
+| `p_session_id` | `uuid` | No | Si NULL, usa la sesión open del installer |
+| `p_cancel_reason` | `text` | **Sí** | Razón breve de cancelación (no puede ser vacío) |
+| `p_cancel_report` | `text` | **Sí** | Reporte detallado (no puede ser vacío) |
+| `p_idempotency_key` | `text` | No | Para idempotencia |
+
+**Retorna:** `session_id`, `status` (`cancelled`), `required_devices_count`, `current_installed_devices_count`, `remaining_devices_count`, `result`, `error`.
+
+**Lógica:**
+- La sesión pasa a `cancelled` con `cancel_reason` y `cancel_report`.
+- Se inserta un `sensor_maintenance_actions` de tipo `maintenance_cancel_report` con el reporte.
+- El request de mantenimiento permanece `open`; el store permanece en `maintenance`.
+- El admin puede reasignar a otro instalador o cerrar el request manualmente.
+
+**Restricciones frontend:**
+- `p_cancel_reason` y `p_cancel_report` son **obligatorios**.
+- Solo el installer dueño de la sesión puede cancelarla.
 
 ---
 
@@ -277,9 +327,9 @@ Retorna tiendas cercanas a la posición del instalador que están disponibles pa
 
 **Filtros aplicados automáticamente:**
 - Solo tiendas con `active = true`.
-- Sin sesión de instalación `open` de otro instalador.
+- Sin sesión de instalación `open` de **ningún instalador** (cualquier sesión open en esa tienda la excluye del listado, incluyendo la propia).
 - Para tiendas en `maintenance`: solo visibles si tienen solicitud de mantenimiento `open` Y el instalador es el asignado (o `assigned_installer_profile_id = NULL`).
-- Sin sesión de mantenimiento `open` de otro instalador.
+- Sin sesión de mantenimiento `open` de otro instalador (la propia sesión no bloquea la visibilidad).
 
 ```mermaid
 flowchart LR
@@ -292,7 +342,8 @@ flowchart LR
 - `country_code` debe pasarse como código de 2 letras mayúsculas válido.
 - `p_limit` máximo 500.
 - Las tiendas en `maintenance` solo aparecen si tienen request abierto asignado al installer (o sin asignar).
-- Tiendas con sesión activa de otro instalador **no aparecen** en el listado.
+- Tiendas con **cualquier** sesión de instalación `open` (incluyendo la propia) **no aparecen** en el listado.
+- Tiendas con sesión de mantenimiento `open` de otro instalador **no aparecen** en el listado.
 
 ---
 
@@ -345,7 +396,8 @@ Las sesiones pueden ser canceladas automáticamente (con `cancel_reason` especí
 | Abrir sesión de instalación | `installer` | Store en `new_store`, `install_enabled = true`, sin sesiones activas paralelas |
 | Cerrar sesión de instalación | `installer` (dueño) | Todos los sensores requeridos instalados |
 | Abrir sesión de mantenimiento | `installer` | Store en `maintenance`, request abierto, installer asignado o sin asignar |
-| Cerrar sesión de mantenimiento | `installer` (dueño) | |
+| Cerrar sesión de mantenimiento | `installer` (dueño) | Todos los sensores requeridos instalados; auto-cierra request y restaura store |
+| Cancelar sesión de mantenimiento | `installer` (dueño) | `cancel_reason` y `cancel_report` obligatorios; request permanece open |
 | Buscar tiendas cercanas | `owner`, `admin`, `installer` | `country_code` válido, coordenadas válidas |
 | Tener 2 sesiones activas simultáneas | ❌ | Bloqueado por lógica de RPC |
 | Acceso directo a tablas de sesiones | ❌ | RLS habilitado |

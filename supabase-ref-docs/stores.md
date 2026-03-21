@@ -299,7 +299,7 @@ Retorna el contexto completo de una tienda para la app instaladora: datos de la 
 > **⚠️ Nota:** el campo `wifi_password_encrypted` retornado está **aún cifrado**. Para obtener la contraseña en texto plano, usar `rpc_store_wifi_credentials_get`.
 
 **Restricciones frontend:**
-- Un `installer` solo puede llamar este RPC si tiene una sesión de instalación `open` para esa tienda.
+- Un `installer` solo puede llamar este RPC si tiene una sesión de **instalación** `open` para esa tienda. Una sesión de **mantenimiento** NO es suficiente; en flujo de mantenimiento el installer debe obtener el contexto de la tienda por otros medios (`rpc_get_nearby_installer_stores` retorna los campos básicos).
 - `owner`/`admin` pueden llamarlo libremente.
 
 ---
@@ -355,6 +355,7 @@ Verifica si una tienda puede recibir una sesión de instalación. Retorna `can_o
 | `install_enabled` | `boolean` | |
 | `can_open_session` | `boolean` | `true` si el installer puede abrir sesión |
 | `blocking_reason` | `text` | Razón de bloqueo si `can_open_session = false` |
+| `maintenance_reason` | `text` | Razón del request de mantenimiento abierto, si existe (puede ser `NULL`) |
 
 **Valores de `blocking_reason`:**
 
@@ -362,6 +363,9 @@ Verifica si una tienda puede recibir una sesión de instalación. Retorna `can_o
 |---|---|
 | `store_not_found` | La tienda no existe |
 | `store_inactive` | `active = false` |
+| `store_in_maintenance_use_maintenance_flow` | `status = 'maintenance'`; usar flujo de mantenimiento |
+| `store_installation_already_completed` | Instalación ya completada (`status = 'operational'` o sesión `completed` existente) |
+| `store_not_eligible_for_installation` | El store tiene status distinto a `new_store` (no es maintenance ni operational) |
 | `store_not_enabled_for_installation` | `install_enabled = false` |
 | `store_has_open_session_by_another_installer` | Otro instalador tiene sesión abierta |
 
@@ -435,15 +439,16 @@ Cierra una sesión de instalación. Si todos los sensores requeridos están inst
 | `p_store_id` | `uuid` | Requerido |
 | `p_session_id` | `uuid` | Opcional; si no se pasa, busca la sesión open del installer |
 
-**Retorna:** `session_id`, `status` (resultado final: `completed` o `cancelled`), `required_devices_count`, `current_installed_devices_count`, `remaining_devices_count`, `result`, `error`.
+**Retorna:** `session_id`, `status` (`completed`), `required_devices_count`, `current_installed_devices_count`, `remaining_devices_count`, `result`, `error`.
 
 **Lógica de cierre:**
-- Si `current_installed_devices_count >= authorized_devices_count`: sesión → `completed`, store → `operational`.
-- Si hay dispositivos faltantes: sesión → `cancelled`, store permanece en `new_store`.
+- Si `remaining_devices_count > 0` → **ERROR**: `'cannot close session %: % sensors still required by contract'`. La sesión permanece `open`; el instalador debe instalar los sensores faltantes antes de cerrar.
+- Si todos los sensores están instalados → sesión → `completed`, store → `operational` (si estaba en `new_store`).
 
 **Restricciones frontend:**
 - Solo el installer dueño de la sesión puede cerrarla (o `service_role`/admin de consola).
 - La sesión debe estar en estado `open`.
+- No se puede forzar el cierre con sensores pendientes; no existe parámetro de forzado en este RPC.
 
 ---
 
@@ -490,6 +495,87 @@ Lista todas las tiendas con paginación, búsqueda, filtros y ordenamiento. Dise
 | `phone_number` | `text` | De `store_context` |
 | `last_visit_date` | `timestamptz` | MAX `opened_at` de sesiones install + maintenance |
 | `total_count` | `bigint` | Total sin paginación (`COUNT(*) OVER()`) |
+
+---
+
+### `rpc_admin_map_list_stores(...)`
+
+Listado geoespacial para mapa administrativo (Google Maps/Leaflet) con centro+radio, filtro por estados y paginación progresiva.
+
+**Permisos:** `authenticated` (`owner`, `admin`), `service_role`.
+
+**Parámetros:**
+
+| Parámetro | Tipo | Default | Notas |
+|---|---|---|---|
+| `p_center_latitude` | `float8` | — | **Requerido**. Rango `-90..90` |
+| `p_center_longitude` | `float8` | — | **Requerido**. Rango `-180..180` |
+| `p_radius_meters` | `int` | `50000` | Radio de inclusión. Se aplica mínimo `100` y máximo efectivo `250000` |
+| `p_statuses` | `text[]` | `['new_store','operational','maintenance','inactive']` | Estados permitidos del filtro |
+| `p_limit` | `int` | `300` | Máx `1000` por página |
+| `p_offset` | `int` | `0` | Paginación offset |
+| `p_country_code` | `text` | `NULL` | Opcional. Si se envía, debe ser ISO-3166 alpha-2 válido |
+
+**Retorna (TABLE):**
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `store_id`, `name`, `address`, `google_maps_url` | varios | Datos básicos de marker |
+| `authorized_devices_count` | `int` | Capacidad contractual |
+| `status`, `active`, `install_enabled` | varios | Estado operativo de la tienda |
+| `country_code`, `city_name`, `state_name` | varios | Contexto geográfico |
+| `distance_meters`, `latitude`, `longitude` | varios | Posición y distancia al centro consultado |
+| `has_open_install_session` | `boolean` | Si hay sesión de instalación abierta |
+| `has_open_maintenance_session` | `boolean` | Si hay sesión de mantenimiento abierta |
+| `has_more` | `boolean` | Indica si hay más páginas para cargar |
+| `effective_radius_meters` | `int` | Radio realmente aplicado tras clamp |
+| `radius_clamped` | `boolean` | `true` si el radio solicitado fue recortado por protección |
+
+**Notas de performance para mapa:**
+- Evita `COUNT(*) OVER()` para no escanear todo el universo cuando el radio es grande.
+- Usa patrón `LIMIT + 1` para calcular `has_more` y soportar carga incremental fluida.
+- Mantiene guardrails server-side (`radius` y `limit`) para evitar consultas explosivas.
+
+---
+
+### `rpc_admin_map_store_clusters(...)`
+
+Devuelve clusters de tiendas para el mapa admin usando `viewport + zoom`. Está pensado para zoom bajo/medio, donde miles de markers individuales degradan rendimiento.
+
+**Permisos:** `authenticated` (`owner`, `admin`), `service_role`.
+
+**Parámetros:**
+
+| Parámetro | Tipo | Default | Notas |
+|---|---|---|---|
+| `p_min_latitude` | `float8` | — | **Requerido** |
+| `p_min_longitude` | `float8` | — | **Requerido** |
+| `p_max_latitude` | `float8` | — | **Requerido** |
+| `p_max_longitude` | `float8` | — | **Requerido** |
+| `p_zoom` | `int` | `10` | Se clamp a `0..22` |
+| `p_statuses` | `text[]` | `['new_store','operational','maintenance','inactive']` | Filtro de estados |
+| `p_limit` | `int` | `500` | Máx `2000` clusters por página |
+| `p_offset` | `int` | `0` | Paginación de clusters |
+| `p_country_code` | `text` | `NULL` | Opcional, ISO-3166 alpha-2 |
+
+**Retorna (TABLE):**
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `cluster_key` | `text` | Id estable del cluster (`z:tile_x:tile_y`) |
+| `cluster_zoom` | `int` | Zoom efectivo usado para tileado |
+| `tile_x`, `tile_y` | `bigint` | Coordenadas de tile Web Mercator |
+| `cluster_latitude`, `cluster_longitude` | `float8` | Centro del cluster |
+| `stores_count` | `int` | Total de tiendas en el cluster |
+| `new_store_count`, `operational_count`, `maintenance_count`, `inactive_count` | `int` | Conteos por estado |
+| `sample_store_ids` | `uuid[]` | Hasta 3 tiendas de referencia |
+| `has_more` | `boolean` | Si hay más clusters para paginar |
+| `effective_limit` | `int` | Límite aplicado tras clamp |
+
+**Estrategia de consumo frontend recomendada:**
+- `zoom <= 11`: usar `rpc_admin_map_store_clusters`.
+- `zoom >= 12`: usar `rpc_admin_map_list_stores` (puntos individuales).
+- Al cambiar viewport (pan/zoom), aplicar debounce (`300-500ms`) y recargar página 0.
 
 ---
 

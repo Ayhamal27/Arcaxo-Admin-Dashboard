@@ -103,6 +103,28 @@ export interface RpcStorePreInstallInput {
   p_store_id: string;
 }
 
+export interface RpcAdminMapListStoresInput {
+  p_center_latitude: number;
+  p_center_longitude: number;
+  p_radius_meters?: number;
+  p_statuses?: string[] | null;
+  p_limit?: number;
+  p_offset?: number;
+  p_country_code?: string | null;
+}
+
+export interface RpcAdminMapStoreClustersInput {
+  p_min_latitude: number;
+  p_min_longitude: number;
+  p_max_latitude: number;
+  p_max_longitude: number;
+  p_zoom?: number;
+  p_statuses?: string[] | null;
+  p_limit?: number;
+  p_offset?: number;
+  p_country_code?: string | null;
+}
+
 export interface RpcGetNearbyInstallerStoresInput {
   p_installer_latitude: number;
   p_installer_longitude: number;
@@ -257,6 +279,30 @@ export interface RpcAdminDecommissionSensorInput {
   p_sensor_id: string;
   p_reason: DecommissionReason;
   p_note?: string | null;
+}
+
+export interface RpcAdminListSensorInstallationsInput {
+  p_sensor_id: string;
+  p_page?: number;
+  p_page_size?: number;
+}
+
+export interface RpcAdminListSensorEventsInput {
+  p_sensor_id: string;
+  p_installation_id?: string | null;
+  p_page?: number;
+  p_page_size?: number;
+}
+
+export interface RpcGetNearbyInstallersInput {
+  p_center_latitude: number;
+  p_center_longitude: number;
+  p_country_code: string;
+  p_radius_meters?: number;
+  p_limit?: number;
+  p_offset?: number;
+  p_filter_status?: string | null;
+  p_max_age_minutes?: number;
 }
 
 /**

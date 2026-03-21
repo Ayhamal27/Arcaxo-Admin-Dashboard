@@ -229,11 +229,10 @@ sequenceDiagram
     end
 
     Installer->>DB: rpc_store_maintenance_session_close(store_id)
-    DB-->>Installer: session completed
-
-    Admin->>DB: rpc_store_maintenance_close(store_id)
-    DB-->>Admin: request closed, store.status = 'operational'
+    DB-->>Installer: session completed → request auto-closed → store = operational
 ```
+
+> **Nota:** `rpc_store_maintenance_session_close` **auto-cierra** el request de mantenimiento y restaura el store a `operational` en una sola operación atómica. El admin **NO necesita** llamar `rpc_store_maintenance_close` por separado en el flujo normal. `rpc_store_maintenance_close` queda reservado para casos de cierre administrativo forzado o cuando el installer canceló la sesión y el admin decide cerrar el request manualmente.
 
 ---
 
@@ -344,6 +343,16 @@ Cierra la solicitud de mantenimiento y retorna la tienda a `status = 'operationa
 
 Ver [sessions.md](./sessions.md#rpc_store_maintenance_session_openp_store_id-p_request_id) para documentación completa.
 
+> **Comportamiento nuevo:** si el request de mantenimiento tiene `assigned_installer_profile_id = NULL` al momento de abrir la sesión, el RPC auto-asigna al installer como responsable. Esto lo oculta del listado de tiendas de otros instaladores (vía `rpc_get_nearby_installer_stores`).
+
+---
+
+### `rpc_store_maintenance_session_cancel(p_store_id, p_session_id?, p_cancel_reason, p_cancel_report, p_idempotency_key?)`
+
+Ver [sessions.md](./sessions.md) para documentación completa.
+
+> **Cuándo usar:** cuando el instalador no puede completar el trabajo y necesita abortar. El request de mantenimiento **permanece `open`**; la tienda sigue en `status = 'maintenance'`.
+
 ---
 
 ## Diagrama de estados de `store_maintenance_requests.status`
@@ -389,6 +398,7 @@ Durante una sesión de mantenimiento, el instalador puede:
 | Desasignar instalador | `owner`, `admin` | Sin sesión de mantenimiento activa |
 | Cerrar solicitud de mantenimiento | `owner`, `admin`, `installer` asignado | `installer` solo puede cerrar el que le está asignado |
 | Forzar cierre con sesión abierta | `owner`, `admin`, `installer` asignado | Pasar `p_force_close_open_session = true` |
-| Abrir sesión de mantenimiento | `installer` | Solo si es el asignado (o sin asignado); sin otra sesión activa |
+| Abrir sesión de mantenimiento | `installer` | Solo si es el asignado (o sin asignado); sin otra sesión activa; auto-asigna si sin asignar |
+| Cancelar sesión de mantenimiento | `installer` | `cancel_reason` y `cancel_report` obligatorios; request queda `open` |
 | Tienda sin request abierto aparece en mantenimiento | ❌ | Solo tiendas con request `open` son visibles en el listado `rpc_get_nearby_installer_stores` con `status=maintenance` |
 | Acceso directo a tablas | ❌ | RLS habilitado |

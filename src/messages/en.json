@@ -110,6 +110,9 @@
     "noUsers": "No users registered",
     "noUsersDesc": "Create the first user to get started",
     "errorLoading": "Error loading users",
+    "contactUser": "Contact user",
+    "phoneNotAvailable": "Phone not available",
+    "call": "Call",
     "roles": {
       "owner": "Owner",
       "admin": "Administrator",
@@ -161,10 +164,6 @@
     "loadingMap": "Loading map...",
     "noApiKey": "API Key not configured",
     "noApiKeyDesc": "Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your environment variables",
-    "legend": "Legend",
-    "statusActive": "Active",
-    "statusInactive": "Inactive",
-    "statusSuspended": "Suspended",
-    "statusPending": "Pending"
+    "legend": "Legend"
   }
 }

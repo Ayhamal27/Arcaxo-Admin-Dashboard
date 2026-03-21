@@ -28,8 +28,8 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
       />
 
       {/* Main content area */}
-      <main className="pt-[80px] lg:pl-[317px] min-h-screen flex flex-col">
-        <div className="p-6 flex-1 flex flex-col">
+      <main className="pt-[80px] lg:pl-[317px] min-h-screen flex flex-col min-w-0">
+        <div className="p-6 flex-1 flex flex-col min-w-0">
           {children}
         </div>
       </main>

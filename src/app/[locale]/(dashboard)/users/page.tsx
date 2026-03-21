@@ -1,10 +1,10 @@
 'use client';
 
-import { use, useTransition } from 'react';
+import { use, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Plus, Search, Pencil, Phone } from 'lucide-react';
+import { Plus, Search, Pencil, Phone, Cpu, Store, MapPin, Copy, Check } from 'lucide-react';
 
 import { listUsersAction } from '@/actions/users/list-users';
 import { useUsersStore } from '@/lib/stores/users-store';
@@ -16,6 +16,100 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { RpcAdminListUsersOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
+
+interface PhoneModalUser {
+  full_name: string;
+  city_name?: string | null;
+  phone_country_code?: string | null;
+  phone_number?: string | null;
+}
+
+function PhoneModal({ user, onClose }: { user: PhoneModalUser; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const t = useTranslations('users');
+  const tCommon = useTranslations('common');
+  const phone =
+    user.phone_country_code && user.phone_number
+      ? `${user.phone_country_code} ${user.phone_number}`
+      : user.phone_number ?? null;
+
+  const handleCopy = () => {
+    if (!phone) return;
+    navigator.clipboard.writeText(phone).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-[15px] p-6 w-full max-w-[380px] shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-[40px] h-[40px] rounded-full bg-[#0000FF] flex items-center justify-center">
+            <Phone className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-[16px] font-semibold text-[#191919]">{t('contactUser')}</p>
+            {user.city_name && (
+              <p className="text-[13px] text-[#667085]">{user.city_name}</p>
+            )}
+          </div>
+        </div>
+
+        {/* User info */}
+        <div className="bg-[#F9F9FF] rounded-[10px] px-4 py-3 mb-4">
+          <p className="text-[15px] font-semibold text-[#191919]">{user.full_name}</p>
+          {user.city_name && (
+            <p className="text-[13px] text-[#667085]">{user.city_name}</p>
+          )}
+        </div>
+
+        {/* Phone number */}
+        {phone ? (
+          <>
+            <div className="bg-[#F5F5F5] rounded-[10px] px-4 py-3 flex items-center justify-between mb-4">
+              <span className="text-[18px] font-semibold text-[#191919] tracking-wide">
+                {phone}
+              </span>
+              <button
+                onClick={handleCopy}
+                className="ml-3 flex items-center gap-1.5 text-[13px] text-[#0000FF] hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? tCommon('copied') : tCommon('copy')}
+              </button>
+            </div>
+            <a
+              href={`tel:${phone}`}
+              className="flex items-center justify-center gap-2 w-full h-[44px] bg-[#0000FF] text-white text-[15px] font-medium rounded-[10px] hover:bg-[#0000CC] transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+              {t('call')}
+            </a>
+          </>
+        ) : (
+          <div className="text-center py-3 mb-1">
+            <p className="text-[14px] text-[#9CA3AF]">{t('phoneNotAvailable')}</p>
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-3 w-full h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[10px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
+        >
+          {tCommon('close')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function UsuariosPage({
   params,
@@ -29,6 +123,7 @@ export default function UsuariosPage({
   const [, startTransition] = useTransition();
 
   const { filters, pagination, setFilters, setPage } = useUsersStore();
+  const [phoneModal, setPhoneModal] = useState<PhoneModalUser | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['users', filters, pagination.currentPage, pagination.pageSize],
@@ -49,7 +144,7 @@ export default function UsuariosPage({
   const totalPages = Math.ceil(total / pagination.pageSize);
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 min-w-0">
       <Breadcrumb locale={locale} items={[{ label: t('title') }]} />
 
       {/* Action bar: Nueva Usuario + Search */}
@@ -97,28 +192,40 @@ export default function UsuariosPage({
         </div>
       ) : (
         <div className="bg-white rounded-[15px] border border-[#E5E5EA] px-[20px] py-[25px]">
-          <table className="w-full">
+          <table className="table-fixed w-full">
             <thead>
-              <tr>
-                <th className="text-left pl-[21px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[260px]">
+              <tr className="border-b border-[#E5E5EA]">
+                <th className="text-left pl-[21px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[26%]">
                   {t('userColumn')}
                 </th>
-                <th className="text-left pl-[41px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[219px]">
+                <th className="text-left pl-[41px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[23%]">
                   {t('role')}
                 </th>
-                <th className="text-center px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[141px]">
-                  {t('devicesInstalled')}
+                <th
+                  className="text-center px-[10px] py-[10px] w-[7%]"
+                  title={t('devicesInstalled')}
+                >
+                  <div className="flex items-center justify-center">
+                    <Cpu className="w-5 h-5 text-[#161616]" />
+                  </div>
                 </th>
-                <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[141px]">
-                  {t('storesInstalled')}
+                <th
+                  className="text-center px-[10px] py-[10px] w-[7%]"
+                  title={t('storesInstalled')}
+                >
+                  <div className="flex items-center justify-center">
+                    <Store className="w-5 h-5 text-[#161616]" />
+                  </div>
                 </th>
-                <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-bold text-[#161616] w-[161px]">
-                  {t('phone')}
+                <th
+                  className="text-center px-[10px] py-[10px] w-[13%]"
+                  title={tCommon('zone')}
+                >
+                  <div className="flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-[#161616]" />
+                  </div>
                 </th>
-                <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[197px]">
-                  {tCommon('zone')}
-                </th>
-                <th className="text-center p-[10px] text-[18px] font-semibold text-[#161616] w-[198px]">
+                <th className="text-center p-[10px] text-[18px] font-semibold text-[#161616] w-[24%]">
                   {tCommon('actions')}
                 </th>
               </tr>
@@ -127,85 +234,79 @@ export default function UsuariosPage({
               {users.map((user) => (
                 <tr
                   key={user.user_id}
-                  className="h-[74px] hover:bg-[#FAFAFF] transition-colors"
+                  className="border-b border-[#E5E5EA] last:border-b-0 hover:bg-[#FAFAFF] transition-colors"
                 >
                   {/* Usuario */}
-                  <td className="pl-[22px] pr-[30px]">
-                    <div className="flex gap-[20px] items-center">
+                  <td className="pl-[22px] pr-[10px] overflow-hidden">
+                    <div className="flex gap-[12px] items-center">
                       <UserAvatar
                         firstName={user.first_name}
                         lastName={user.last_name}
                         role={user.role}
                       />
-                      <span className="text-[18px] text-[#404D61] whitespace-nowrap">
+                      <span className="text-[18px] text-[#404D61] truncate">
                         {user.first_name} {user.last_name}
                       </span>
                     </div>
                   </td>
 
                   {/* Rol */}
-                  <td className="px-[15px]">
+                  <td className="px-[15px] overflow-hidden">
                     <div className="flex justify-center">
                       <RoleBadge role={user.role} />
                     </div>
                   </td>
 
                   {/* Dispositivos instalados */}
-                  <td className="p-[15px]">
+                  <td className="px-[10px] py-[15px] text-center">
                     <span className="text-[18px] text-[#404D61]">
                       {user.devices_installed_count}
                     </span>
                   </td>
 
                   {/* Tiendas instaladas */}
-                  <td className="p-[15px]">
+                  <td className="px-[10px] py-[15px] text-center">
                     <span className="text-[18px] text-[#404D61]">
                       {user.stores_installed_count}
                     </span>
                   </td>
 
-                  {/* Telefono */}
-                  <td className="p-[15px]">
-                    <span className="text-[18px] text-[#404D61] whitespace-nowrap">
-                      {user.phone_country_code && user.phone_number
-                        ? `${user.phone_country_code} ${user.phone_number}`
-                        : '—'}
-                    </span>
-                  </td>
-
                   {/* Zona */}
-                  <td className="p-[15px]">
-                    <span className="text-[18px] text-[#404D61]">
+                  <td className="px-[10px] py-[15px] text-center">
+                    <span className="text-[18px] text-[#404D61] break-words">
                       {user.city_name ?? '—'}
                     </span>
                   </td>
 
                   {/* Acciones */}
                   <td className="p-[10px]">
-                    <div className="flex gap-[20px] items-center justify-center">
+                    <div className="flex gap-[12px] items-center justify-center">
                       <Link
                         href={`/${locale}/users/${user.user_id}`}
-                        className="flex items-center justify-center h-[34px] w-[80px] border border-[#0000FF] rounded-[8px] text-[15px] font-medium text-[#0000FF] hover:bg-[#F0F0FF] transition-colors"
+                        className="flex items-center justify-center h-[34px] w-[80px] border border-[#0000FF] rounded-[8px] text-[15px] font-medium text-[#0000FF] hover:bg-[#F0F0FF] transition-colors shrink-0"
                       >
                         {tCommon('expand')}
                       </Link>
                       <Link
                         href={`/${locale}/users/${user.user_id}`}
-                        className="flex items-center justify-center h-[34px] w-[40px] border border-[#D0D5DD] rounded-[8px] text-[#667085] hover:bg-[#F9F9F9] transition-colors"
+                        className="flex items-center justify-center h-[34px] w-[38px] border border-[#D0D5DD] rounded-[8px] text-[#667085] hover:bg-[#F9F9F9] transition-colors shrink-0"
                       >
                         <Pencil className="w-4 h-4" />
                       </Link>
-                      <a
-                        href={
-                          user.phone_number
-                            ? `tel:${user.phone_country_code ?? ''}${user.phone_number}`
-                            : undefined
+                      <button
+                        className="flex items-center justify-center h-[34px] w-[38px] bg-[#0000FF] rounded-[8px] text-white hover:bg-[#0000CC] transition-colors shrink-0"
+                        title={t('contactUser')}
+                        onClick={() =>
+                          setPhoneModal({
+                            full_name: `${user.first_name} ${user.last_name}`,
+                            city_name: user.city_name,
+                            phone_country_code: user.phone_country_code,
+                            phone_number: user.phone_number,
+                          })
                         }
-                        className="flex items-center justify-center h-[34px] w-[40px] bg-[#0000FF] rounded-[8px] text-white hover:bg-[#0000CC] transition-colors"
-                        onClick={(e) => !user.phone_number && e.preventDefault()}
                       >
                         <Phone className="w-5 h-5" />
-                      </a>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -220,6 +321,11 @@ export default function UsuariosPage({
             onPageChange={setPage}
           />
         </div>
+      )}
+
+      {/* Phone modal */}
+      {phoneModal && (
+        <PhoneModal user={phoneModal} onClose={() => setPhoneModal(null)} />
       )}
     </div>
   );

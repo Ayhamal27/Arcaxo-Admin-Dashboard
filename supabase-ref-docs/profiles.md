@@ -212,9 +212,11 @@ Verifica si un usuario tiene acceso al sistema bajo el scope requerido. Es el RP
 
 ---
 
-### `rpc_user_open_installation_store(p_target_user_id?)`
+### ~~`rpc_user_open_installation_store(p_target_user_id?)`~~ — **DEPRECATED**
 
-Retorna el `store_id` de la sesión de instalación abierta del usuario, si existe. Es parte del bootstrap de la app.
+> ⚠️ **Deprecado.** Usar `rpc_user_active_session` en su lugar. Esta función solo retorna sesiones de **instalación**; no detecta sesiones de **mantenimiento**. El frontend debe migrar a `rpc_user_active_session` que retorna ambos tipos con el campo `session_type`.
+
+Retorna el `store_id` de la sesión de instalación abierta del usuario, si existe.
 
 **Permisos:** `authenticated`, `service_role`.
 
@@ -226,9 +228,7 @@ Retorna el `store_id` de la sesión de instalación abierta del usuario, si exis
 
 **Retorna:** `store_id uuid` (puede ser `NULL` si no hay sesión abierta).
 
-**Restricciones frontend:**
-- Un usuario solo puede consultar su propia sesión; para consultar la de otro necesita `role IN ('owner', 'admin')`.
-- Retorna siempre una fila (con `store_id = NULL` si no hay sesión).
+**Migración:** reemplazar con `rpc_user_active_session` — retorna `store_id` y `session_type` (`'install'` o `'maintenance'`), cubriendo ambos dominios de sesión.
 
 ---
 

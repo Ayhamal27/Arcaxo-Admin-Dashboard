@@ -4,7 +4,7 @@ import { use, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Search, Cpu, Phone, Cpu as ChipIcon, Eye, X, Copy, Check } from 'lucide-react';
+import { Search, Cpu, Phone, Cpu as ChipIcon, Eye, Copy, Check } from 'lucide-react';
 
 import { listSensorsAction } from '@/actions/sensors/list-sensors';
 import { useSensorsStore } from '@/lib/stores/sensors-store';
@@ -72,27 +72,25 @@ function PhoneModal({ sensor, onClose }: { sensor: PhoneModalSensor; onClose: ()
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-[15px] p-6 w-full max-w-[380px] shadow-xl">
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-[15px] p-6 w-full max-w-[380px] shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-[40px] h-[40px] rounded-full bg-[#0000FF] flex items-center justify-center">
-              <Phone className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-[16px] font-semibold text-[#191919]">{tD('contactInstaller')}</p>
-              {sensor.store_name && (
-                <p className="text-[13px] text-[#667085]">{sensor.store_name}</p>
-              )}
-            </div>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-[40px] h-[40px] rounded-full bg-[#0000FF] flex items-center justify-center">
+            <Phone className="w-5 h-5 text-white" />
           </div>
-          <button
-            onClick={onClose}
-            className="w-[32px] h-[32px] flex items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors text-[#667085]"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div>
+            <p className="text-[16px] font-semibold text-[#191919]">{tD('contactInstaller')}</p>
+            {sensor.store_name && (
+              <p className="text-[13px] text-[#667085]">{sensor.store_name}</p>
+            )}
+          </div>
         </div>
 
         {/* Installer info */}
