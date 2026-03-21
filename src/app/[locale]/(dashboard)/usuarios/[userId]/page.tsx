@@ -6,6 +6,7 @@ import { MapPin, Phone, Mail, Cpu, Store, Calendar, User } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { UserActionsClient } from './UserActionsClient';
 
 interface UserDetailPageProps {
   params: Promise<{ locale: string; userId: string }>;
@@ -191,8 +192,18 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
         </div>
       </div>
 
-      {/* Back link */}
+      {/* Actions */}
       <div className="mt-6">
+        <UserActionsClient
+          userId={userId}
+          userEmail={user.auth_email ?? ''}
+          currentStatus={user.status}
+          locale={locale}
+        />
+      </div>
+
+      {/* Back link */}
+      <div className="mt-4">
         <Link href={`/${locale}/usuarios`} className="text-[14px] text-[#0000FF] hover:underline">
           ← Volver a usuarios
         </Link>
