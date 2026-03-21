@@ -1,0 +1,109 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "create": "Create",
+    "view": "View",
+    "active": "Active",
+    "inactive": "Inactive",
+    "actions": "Actions",
+    "noResults": "No results",
+    "confirm": "Confirm"
+  },
+  "auth": {
+    "login": "Sign In",
+    "logout": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot your password?",
+    "rememberMe": "Remember me",
+    "signIn": "Sign In",
+    "invalidCredentials": "Invalid email or password",
+    "restoreAccount": "Restore Account",
+    "resetPassword": "Reset Password",
+    "sendResetLink": "Send Reset Link",
+    "backToLogin": "Back to Sign In",
+    "enterEmail": "Enter your email address",
+    "enterNewPassword": "Enter your new password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match",
+    "resetEmailSent": "If an account exists with that email, a reset link has been sent",
+    "passwordUpdated": "Password updated successfully",
+    "accessDenied": "Your role does not have access to this dashboard",
+    "accountInactive": "Your account is inactive"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "reports": "Reports",
+    "aerial": "Aerial View",
+    "stores": "Stores",
+    "devices": "Devices",
+    "users": "Users",
+    "settings": "Settings",
+    "profile": "My Profile"
+  },
+  "stores": {
+    "title": "Stores",
+    "newStore": "New Store",
+    "searchPlaceholder": "Search stores...",
+    "name": "Name",
+    "status": "Status",
+    "location": "Location",
+    "createdAt": "Created At",
+    "devices": "Devices",
+    "statuses": {
+      "new_store": "New",
+      "maintenance": "Maintenance",
+      "operational": "Operational",
+      "inactive": "Inactive"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "newUser": "New User",
+    "searchPlaceholder": "Search users...",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Administrator",
+      "manager": "Manager",
+      "viewer": "Viewer",
+      "store_owner": "Store Owner",
+      "installer": "Installer"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended",
+      "pending": "Pending"
+    }
+  },
+  "devices": {
+    "title": "Devices",
+    "searchPlaceholder": "Search devices...",
+    "serialNumber": "Serial Number",
+    "store": "Store",
+    "status": "Status",
+    "installDate": "Install Date",
+    "statuses": {
+      "installed": "Installed",
+      "failed": "Failed",
+      "uninstalled": "Uninstalled",
+      "connecting": "Connecting"
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "reset": "Restablecer",
+    "create": "Crear",
+    "view": "Ver",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "actions": "Acciones",
+    "noResults": "Sin resultados",
+    "confirm": "Confirmar"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "rememberMe": "Recuérdame",
+    "signIn": "Iniciar sesión",
+    "invalidCredentials": "Correo o contraseña inválidos",
+    "restoreAccount": "Restaurar cuenta",
+    "resetPassword": "Restablecer contraseña",
+    "sendResetLink": "Enviar enlace de restablecimiento",
+    "backToLogin": "Volver al inicio de sesión",
+    "enterEmail": "Ingresa tu correo electrónico",
+    "enterNewPassword": "Ingresa tu nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "resetEmailSent": "Si existe una cuenta con ese correo, se ha enviado el enlace",
+    "passwordUpdated": "Contraseña actualizada exitosamente",
+    "accessDenied": "Tu rol no tiene acceso a este panel",
+    "accountInactive": "Tu cuenta está inactiva"
+  },
+  "nav": {
+    "dashboard": "Panel de Control",
+    "reports": "Informes",
+    "aerial": "Vista Aérea",
+    "stores": "Tiendas",
+    "devices": "Dispositivos",
+    "users": "Usuarios",
+    "settings": "Configuración",
+    "profile": "Mi perfil"
+  },
+  "stores": {
+    "title": "Tiendas",
+    "newStore": "Nueva tienda",
+    "searchPlaceholder": "Buscar tiendas...",
+    "name": "Nombre",
+    "status": "Estado",
+    "location": "Ubicación",
+    "createdAt": "Fecha de creación",
+    "devices": "Dispositivos",
+    "statuses": {
+      "new_store": "Nueva",
+      "maintenance": "Mantenimiento",
+      "operational": "Operacional",
+      "inactive": "Inactiva"
+    }
+  },
+  "users": {
+    "title": "Usuarios",
+    "newUser": "Nuevo usuario",
+    "searchPlaceholder": "Buscar usuarios...",
+    "name": "Nombre",
+    "email": "Correo",
+    "role": "Rol",
+    "status": "Estado",
+    "roles": {
+      "owner": "Propietario",
+      "admin": "Administrador",
+      "manager": "Gerente",
+      "viewer": "Observador",
+      "store_owner": "Dueño de tienda",
+      "installer": "Instalador"
+    },
+    "statuses": {
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "suspended": "Suspendido",
+      "pending": "Pendiente"
+    }
+  },
+  "devices": {
+    "title": "Dispositivos",
+    "searchPlaceholder": "Buscar dispositivos...",
+    "serialNumber": "Número de serie",
+    "store": "Tienda",
+    "status": "Estado",
+    "installDate": "Fecha de instalación",
+    "statuses": {
+      "installed": "Instalado",
+      "failed": "Fallido",
+      "uninstalled": "Desinstalado",
+      "connecting": "Conectando"
+    }
+  }
+}
