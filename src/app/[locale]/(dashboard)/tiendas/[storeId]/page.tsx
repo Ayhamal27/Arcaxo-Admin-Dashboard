@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { StoreDetailClient } from './StoreDetailClient';
 
 interface StoreDetailPageProps {
   params: Promise<{ locale: string; storeId: string }>;
@@ -83,7 +84,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
           </div>
         </div>
 
-        {/* Stats card */}
+        {/* Stats + toggle card */}
         <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-6 space-y-4">
           <h2 className="text-[18px] font-semibold text-[#161616] mb-4">Estadísticas</h2>
 
@@ -132,8 +133,19 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               )}
             </div>
           )}
+
+          {/* Interactive toggle button */}
+          <StoreDetailClient
+            storeId={storeId}
+            initialActive={store.active}
+            installedDevicesCount={store.installed_devices_count ?? 0}
+            locale={locale}
+          />
         </div>
       </div>
+
+      {/* Tabs: sessions + devices */}
+      <StoreTabsClient storeId={storeId} locale={locale} />
 
       {/* Back link */}
       <div className="mt-6">
@@ -147,3 +159,6 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
     </div>
   );
 }
+
+// Import this here to avoid circular dependency issues
+import { StoreTabsClient } from './StoreTabsClient';

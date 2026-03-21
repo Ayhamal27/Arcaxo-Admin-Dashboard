@@ -19,6 +19,12 @@ import type {
   RpcAdminListSensorsInput,
   RpcAdminGetSensorDetailInput,
   RpcAdminDecommissionSensorInput,
+  RpcAdminListStoreSessionsInput,
+  RpcAdminListStoreSensorsInput,
+  RpcStoreMaintenanceOpenInput,
+  RpcStoreMaintenanceAssignInput,
+  RpcStoreMaintenanceUnassignInput,
+  RpcStoreMaintenanceCloseInput,
 } from '@/types/rpc-inputs';
 import type {
   RpcAdminListStoresOutputItem,
@@ -40,6 +46,11 @@ import type {
   RpcAdminListSensorsOutputItem,
   RpcAdminGetSensorDetailOutput,
   RpcAdminDecommissionSensorOutput,
+  RpcAdminListStoreSessionsOutputItem,
+  RpcAdminListStoreSensorsOutputItem,
+  RpcStoreMaintenanceOpenOutput,
+  RpcStoreMaintenanceAssignOutput,
+  RpcStoreMaintenanceCloseOutput,
 } from '@/types/rpc-outputs';
 
 /**
@@ -177,5 +188,45 @@ export const rpcAdminGetSensorDetail = (p: RpcAdminGetSensorDetailInput) =>
 export const rpcAdminDecommissionSensor = (p: RpcAdminDecommissionSensorInput) =>
   callRpc<RpcAdminDecommissionSensorOutput>(
     'rpc_admin_decommission_sensor',
+    p as unknown as Record<string, unknown>
+  );
+
+// ─── STORE SESSIONS & SENSORS ─────────────────────────────────────────────────
+
+export const rpcAdminListStoreSessions = (p: RpcAdminListStoreSessionsInput) =>
+  callRpc<RpcAdminListStoreSessionsOutputItem[]>(
+    'rpc_admin_list_store_sessions',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcAdminListStoreSensors = (p: RpcAdminListStoreSensorsInput) =>
+  callRpc<RpcAdminListStoreSensorsOutputItem[]>(
+    'rpc_admin_list_store_sensors',
+    p as unknown as Record<string, unknown>
+  );
+
+// ─── MAINTENANCE ─────────────────────────────────────────────────────────────
+
+export const rpcStoreMaintenanceOpen = (p: RpcStoreMaintenanceOpenInput) =>
+  callRpc<RpcStoreMaintenanceOpenOutput>(
+    'rpc_store_maintenance_open',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcStoreMaintenanceAssign = (p: RpcStoreMaintenanceAssignInput) =>
+  callRpc<RpcStoreMaintenanceAssignOutput>(
+    'rpc_store_maintenance_assign',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcStoreMaintenanceUnassign = (p: RpcStoreMaintenanceUnassignInput) =>
+  callRpc<{ result?: boolean; error?: string | null }>(
+    'rpc_store_maintenance_unassign',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcStoreMaintenanceClose = (p: RpcStoreMaintenanceCloseInput) =>
+  callRpc<RpcStoreMaintenanceCloseOutput>(
+    'rpc_store_maintenance_close',
     p as unknown as Record<string, unknown>
   );

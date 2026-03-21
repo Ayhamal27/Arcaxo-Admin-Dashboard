@@ -1,6 +1,6 @@
 # Arcaxo Admin Dashboard — Progress Tracker
 
-## Estado actual: Etapa 10 ✅ COMPLETADA
+## Estado actual: Etapa 11 ✅ COMPLETADA
 
 **Fecha:** 2026-03-21
 
@@ -67,7 +67,7 @@ Stack instalado: Next.js 16.2.1, React 19.2.4, TypeScript 5, Tailwind v4, shadcn
 
 ---
 
-## Próxima etapa: Etapa 11 — Lógica de páginas de Tiendas
+## Próxima etapa: Etapa 12 — Lógica de páginas de Dispositivos
 
 ---
 
@@ -84,7 +84,7 @@ Stack instalado: Next.js 16.2.1, React 19.2.4, TypeScript 5, Tailwind v4, shadcn
 - [x] **08** — Nuevo Usuario (formulario)
 - [x] **09** — Dispositivos (listado)
 - [x] **10** — Vista Aérea (mapa Google Maps)
-- [ ] **11** — Lógica de páginas de Tiendas
+- [x] **11** — Lógica de páginas de Tiendas
 - [ ] **12** — Lógica de páginas de Dispositivos
 - [ ] **13** — Lógica de páginas de Usuarios
 
