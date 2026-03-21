@@ -1,6 +1,6 @@
 # Arcaxo Admin Dashboard — Progress Tracker
 
-## Estado actual: Etapa 03 ✅ COMPLETADA
+## Estado actual: Etapa 08 ✅ COMPLETADA
 
 **Fecha:** 2026-03-21
 
@@ -67,28 +67,7 @@ Stack instalado: Next.js 16.2.1, React 19.2.4, TypeScript 5, Tailwind v4, shadcn
 
 ---
 
-## Próxima etapa: Etapa 04 — Skeleton de Páginas
-
-**Figma:** https://www.figma.com/design/yDxzcHT8xwWPOid5hL1lj9/App-Instaladores?node-id=154-2429
-
-**Componentes a crear:**
-1. `src/app/[locale]/(dashboard)/layout.tsx` — layout con Navbar + Sidebar + main area
-2. `src/components/layout/Navbar.tsx` — fixed top h-80px, logo, hamburger, bell, avatar
-3. `src/components/layout/Sidebar.tsx` — fixed left w-317px, nav items con active state
-4. `src/components/layout/Breadcrumb.tsx` — logo mini + sección actual
-5. `src/components/layout/PageActionBar.tsx` — barra de acciones (botón primario, búsqueda, filtros, reset)
-6. `src/components/shared/DataTable.tsx` — tabla genérica con columnas configurables
-7. `src/components/shared/Pagination.tsx` — paginación con números de página
-8. `src/components/shared/EmptyState.tsx` — estado vacío reutilizable
-9. `src/components/shared/TableSkeleton.tsx` — skeleton de loading
-
-**Especificaciones clave:**
-- Navbar: h-[80px], bg-white, border-b #E2DFDF
-- Sidebar: w-[317px], bg-white, border-r #E2DFDF, item activo border-left 7px #0000FF
-- Main content: padding-left 317px, padding-top 80px
-- Avatar: 35x35px bg-[#53009C] con inicial del usuario
-- Active nav item: color #0000FF, font SemiBold
-- Inactive nav item: icon #82A2C2, text black
+## Próxima etapa: Etapa 09 — Dispositivos (listado)
 
 ---
 
@@ -98,11 +77,11 @@ Stack instalado: Next.js 16.2.1, React 19.2.4, TypeScript 5, Tailwind v4, shadcn
 - [x] **01** — Modelado de Datos y RPCs
 - [x] **02** — Sistema de Autenticación
 - [x] **03** — Páginas de Autenticación
-- [ ] **04** — Skeleton de Páginas (Sidebar, Navbar, Breadcrumb, DataTable)
-- [ ] **05** — Tiendas (listado con tabla)
-- [ ] **06** — Nueva Tienda (formulario)
-- [ ] **07** — Usuarios (listado)
-- [ ] **08** — Nuevo Usuario (formulario)
+- [x] **04** — Skeleton de Páginas (Sidebar, Navbar, Breadcrumb, DataTable)
+- [x] **05** — Tiendas (listado con tabla)
+- [x] **06** — Nueva Tienda (formulario)
+- [x] **07** — Usuarios (listado)
+- [x] **08** — Nuevo Usuario (formulario)
 - [ ] **09** — Dispositivos (listado)
 - [ ] **10** — Vista Aérea (mapa Google Maps)
 - [ ] **11** — Lógica de páginas de Tiendas
