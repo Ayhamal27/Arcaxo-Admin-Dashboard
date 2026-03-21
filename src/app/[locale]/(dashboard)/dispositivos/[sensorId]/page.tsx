@@ -5,6 +5,7 @@ import { MapPin, Calendar, Store, Cpu } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { SensorActionsClient } from './SensorActionsClient';
 
 interface SensorDetailPageProps {
   params: Promise<{ locale: string; sensorId: string }>;
@@ -164,8 +165,18 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
         </div>
       </div>
 
-      {/* Back link */}
+      {/* Actions */}
       <div className="mt-6">
+        <SensorActionsClient
+          sensorId={sensor.sensor_id}
+          currentStatus={sensor.current_status}
+          isActive={sensor.is_active}
+          locale={locale}
+        />
+      </div>
+
+      {/* Back link */}
+      <div className="mt-4">
         <Link
           href={`/${locale}/dispositivos`}
           className="text-[14px] text-[#0000FF] hover:underline"

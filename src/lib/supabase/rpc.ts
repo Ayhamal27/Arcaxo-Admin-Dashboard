@@ -25,6 +25,7 @@ import type {
   RpcStoreMaintenanceAssignInput,
   RpcStoreMaintenanceUnassignInput,
   RpcStoreMaintenanceCloseInput,
+  RpcSensorUnlinkInput,
 } from '@/types/rpc-inputs';
 import type {
   RpcAdminListStoresOutputItem,
@@ -51,6 +52,7 @@ import type {
   RpcStoreMaintenanceOpenOutput,
   RpcStoreMaintenanceAssignOutput,
   RpcStoreMaintenanceCloseOutput,
+  RpcSensorUnlinkOutput,
 } from '@/types/rpc-outputs';
 
 /**
@@ -188,6 +190,12 @@ export const rpcAdminGetSensorDetail = (p: RpcAdminGetSensorDetailInput) =>
 export const rpcAdminDecommissionSensor = (p: RpcAdminDecommissionSensorInput) =>
   callRpc<RpcAdminDecommissionSensorOutput>(
     'rpc_admin_decommission_sensor',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcSensorUnlink = (p: RpcSensorUnlinkInput) =>
+  callRpc<RpcSensorUnlinkOutput>(
+    'rpc_sensor_unlink',
     p as unknown as Record<string, unknown>
   );
 
