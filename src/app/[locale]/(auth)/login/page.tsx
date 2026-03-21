@@ -1,7 +1,160 @@
-export default function LoginPage() {
+'use client';
+
+import { useState, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { loginAction } from '@/actions/auth/login';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { LoginCard } from '@/components/auth/login-card';
+import { FormInput } from '@/components/auth/form-input';
+import { PasswordInput } from '@/components/auth/password-input';
+import { PrimaryButton } from '@/components/auth/primary-button';
+import { ErrorMessage } from '@/components/auth/error-message';
+import { ProfileRole, ProfileStatus } from '@/types/database';
+import Link from 'next/link';
+
+const LoginSchema = z.object({
+  email: z.string().email('Correo inválido'),
+  password: z.string().min(6, 'Mínimo 6 caracteres'),
+});
+
+type LoginFormData = z.infer<typeof LoginSchema>;
+
+export default function LoginPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = use(params);
+  const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
+  const router = useRouter();
+  const setUser = useAuthStore((state) => state.setUser);
+
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(LoginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    setIsLoading(true);
+    setGeneralError(null);
+
+    try {
+      const result = await loginAction({ email: data.email, password: data.password, locale });
+
+      if (!result.success) {
+        setGeneralError(result.error ?? 'Error al iniciar sesión');
+        setIsLoading(false);
+        return;
+      }
+
+      if (result.user) {
+        setUser({
+          id: result.user.id,
+          email: result.user.email,
+          role: result.user.role as ProfileRole,
+          status: ProfileStatus.ACTIVE,
+        });
+      }
+
+      router.push(`/${locale}/tiendas`);
+    } catch (err) {
+      setGeneralError(err instanceof Error ? err.message : 'Error inesperado');
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="text-center">
-      <h1 className="text-2xl font-semibold">Login — WIP (Etapa 03)</h1>
+    <LoginCard>
+      {/* Logo / Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-[25px] font-semibold text-[#191919] tracking-tight">Arcaxo</h1>
+        <p className="text-[14px] text-[#667085] mt-1">{t('signInMessage')}</p>
+      </div>
+
+      {generalError && <ErrorMessage message={generalError} />}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+        {/* Email */}
+        <div>
+          <label className="block text-[12px] text-[#667085] mb-1.5">
+            {t('email')}
+          </label>
+          <FormInput
+            type="email"
+            placeholder={t('email')}
+            error={!!errors.email}
+            autoComplete="email"
+            {...register('email')}
+          />
+          {errors.email && (
+            <p className="text-[12px] text-[#FF4163] mt-1">{errors.email.message}</p>
+          )}
+        </div>
+
+        {/* Password */}
+        <div>
+          <label className="block text-[12px] text-[#667085] mb-1.5">
+            {t('password')}
+          </label>
+          <PasswordInput
+            placeholder={t('password')}
+            error={!!errors.password}
+            autoComplete="current-password"
+            {...register('password')}
+          />
+          {errors.password && (
+            <p className="text-[12px] text-[#FF4163] mt-1">{errors.password.message}</p>
+          )}
+        </div>
+
+        {/* Forgot password */}
+        <div className="text-right">
+          <Link
+            href={`/${locale}/restore-account`}
+            className="text-[14px] text-[#0000FF] hover:text-[#0000CC] transition-colors"
+          >
+            {t('forgotPassword')}
+          </Link>
+        </div>
+
+        <PrimaryButton type="submit" disabled={isLoading} fullWidth>
+          {isLoading ? tCommon('loading') : t('signIn')}
+        </PrimaryButton>
+      </form>
+
+      {/* Language switcher */}
+      <LanguageSwitcher locale={locale} />
+    </LoginCard>
+  );
+}
+
+function LanguageSwitcher({ locale }: { locale: string }) {
+  return (
+    <div className="flex justify-center gap-2 mt-6">
+      {(['es', 'en'] as const).map((lang) => (
+        <Link
+          key={lang}
+          href={`/${lang}/login`}
+          className={`text-[12px] font-medium px-3 py-1 rounded-[6px] transition-colors ${
+            locale === lang
+              ? 'bg-[#0000FF] text-white'
+              : 'bg-[#F0F0F5] text-[#667085] hover:bg-[#E5E5EA]'
+          }`}
+        >
+          {lang.toUpperCase()}
+        </Link>
+      ))}
     </div>
   );
 }
