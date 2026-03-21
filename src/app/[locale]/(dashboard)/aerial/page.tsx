@@ -5,11 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { APIProvider, Map, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
-import { mapListStoresAction } from '@/actions/stores/map-stores';
+import { mapListStoresAction, mapStoreClustersAction } from '@/actions/stores/map-stores';
 import { listStoresAction } from '@/actions/stores/list-stores';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { SearchInput, FilterSelect, ResetButton } from '@/components/layout/PageActionBar';
-import type { RpcAdminMapListStoresOutputItem } from '@/types/rpc-outputs';
+import type { RpcAdminMapStoreClustersOutputItem } from '@/types/rpc-outputs';
 import { MapPin, X, Search, ArrowUpDown, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 
@@ -18,6 +18,7 @@ import Link from 'next/link';
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const DEFAULT_CENTER = { lat: 8.0, lng: -66.0 };
 const DEFAULT_ZOOM = 5;
+const CLUSTER_ZOOM_THRESHOLD = 11;
 
 const STATUS_COLOR: Record<string, string> = {
   new_store: '#0000FF',
@@ -74,7 +75,97 @@ interface StoreItem {
   lng: number;
 }
 
-// ─── Markers — pure display, zero map event listeners ────────────────────────
+interface MapViewport {
+  zoom: number;
+  bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number };
+  center: { lat: number; lng: number };
+  radiusMeters: number;
+}
+
+// ─── Viewport helpers ────────────────────────────────────────────────────────
+
+function extractViewport(map: google.maps.Map): MapViewport | null {
+  const bounds = map.getBounds();
+  const rawZoom = map.getZoom();
+  if (!bounds || rawZoom == null) return null;
+  const zoom = Math.round(rawZoom);
+
+  const ne = bounds.getNorthEast();
+  const sw = bounds.getSouthWest();
+  const center = {
+    lat: (ne.lat() + sw.lat()) / 2,
+    lng: (ne.lng() + sw.lng()) / 2,
+  };
+
+  // Approximate radius (half-diagonal in meters)
+  const R = 6371000;
+  const dLat = ((ne.lat() - sw.lat()) * Math.PI) / 180;
+  const dLng = ((ne.lng() - sw.lng()) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((center.lat * Math.PI) / 180) *
+      Math.cos((center.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  const radiusMeters = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+
+  return {
+    zoom,
+    bounds: {
+      minLat: sw.lat(),
+      minLng: sw.lng(),
+      maxLat: ne.lat(),
+      maxLng: ne.lng(),
+    },
+    center,
+    radiusMeters,
+  };
+}
+
+// ─── MapViewController — tracks user interactions, NOT idle ──────────────────
+
+function MapViewController({
+  onViewportChange,
+}: {
+  onViewportChange: (vp: MapViewport) => void;
+}) {
+  const map = useMap();
+  const callbackRef = useRef(onViewportChange);
+  callbackRef.current = onViewportChange;
+  const initRef = useRef(false);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const emit = () => {
+      const vp = extractViewport(map);
+      if (vp) callbackRef.current(vp);
+    };
+
+    // Capture initial viewport once tiles load
+    const tilesListener = map.addListener('tilesloaded', () => {
+      if (!initRef.current) {
+        initRef.current = true;
+        emit();
+      }
+    });
+
+    // Only react to user drag and zoom — NOT idle
+    const dragListener = map.addListener('dragend', emit);
+    const zoomListener = map.addListener('zoom_changed', () => {
+      setTimeout(emit, 150);
+    });
+
+    return () => {
+      google.maps.event.removeListener(tilesListener);
+      google.maps.event.removeListener(dragListener);
+      google.maps.event.removeListener(zoomListener);
+    };
+  }, [map]);
+
+  return null;
+}
+
+// ─── StoreMarkers — individual markers with client-side clustering ───────────
 
 function StoreMarkers({
   stores,
@@ -93,7 +184,6 @@ function StoreMarkers({
   useEffect(() => {
     if (!map || typeof google === 'undefined') return;
 
-    // Build stable key to skip no-op updates
     const key = stores
       .map((s) => s.store_id)
       .sort()
@@ -102,7 +192,7 @@ function StoreMarkers({
     if (key === storeKeyRef.current) return;
     storeKeyRef.current = key;
 
-    // Dispose previous markers
+    // Dispose previous
     for (const m of markersRef.current) {
       google.maps.event.clearInstanceListeners(m);
       m.setMap(null);
@@ -116,7 +206,6 @@ function StoreMarkers({
       return;
     }
 
-    // Build lookup for click handler
     const storeById: Record<string, StoreItem> = {};
     for (const s of stores) storeById[s.store_id] = s;
 
@@ -142,7 +231,6 @@ function StoreMarkers({
     }
   }, [map, stores]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       for (const m of markersRef.current) {
@@ -155,6 +243,86 @@ function StoreMarkers({
       }
       markersRef.current = [];
       storeKeyRef.current = '';
+    };
+  }, []);
+
+  return null;
+}
+
+// ─── ClusterMarkers — server-side clusters rendered as circle markers ────────
+
+function ClusterMarkers({ clusters }: { clusters: RpcAdminMapStoreClustersOutputItem[] }) {
+  const map = useMap();
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const keyRef = useRef('');
+
+  useEffect(() => {
+    if (!map || typeof google === 'undefined') return;
+
+    const key = clusters.map((c) => c.cluster_key).join(',');
+    if (key === keyRef.current) return;
+    keyRef.current = key;
+
+    // Dispose previous
+    for (const m of markersRef.current) {
+      google.maps.event.clearInstanceListeners(m);
+      m.setMap(null);
+    }
+
+    if (clusters.length === 0) {
+      markersRef.current = [];
+      return;
+    }
+
+    markersRef.current = clusters.map((cluster) => {
+      const count = cluster.stores_count;
+      const size = Math.min(24 + Math.log2(count + 1) * 10, 64);
+
+      // Dominant status color
+      const maxStatus = [
+        { status: 'operational', count: cluster.operational_count },
+        { status: 'new_store', count: cluster.new_store_count },
+        { status: 'maintenance', count: cluster.maintenance_count },
+        { status: 'inactive', count: cluster.inactive_count },
+      ].sort((a, b) => b.count - a.count)[0];
+      const color = getStatusColor(maxStatus.status);
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 1}" fill="${color}" fill-opacity="0.85" stroke="white" stroke-width="2"/>
+        <text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="central"
+          fill="white" font-size="${Math.max(10, size * 0.35)}" font-weight="600" font-family="system-ui, sans-serif">${count}</text>
+      </svg>`;
+
+      const marker = new google.maps.Marker({
+        position: { lat: cluster.cluster_latitude, lng: cluster.cluster_longitude },
+        icon: {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+          scaledSize: new google.maps.Size(size, size),
+          anchor: new google.maps.Point(size / 2, size / 2),
+        },
+        cursor: 'pointer',
+        title: `${count} tiendas`,
+      });
+
+      // Zoom into cluster on click
+      marker.addListener('click', () => {
+        map.setZoom(Math.min((map.getZoom() ?? 5) + 3, 14));
+        map.panTo({ lat: cluster.cluster_latitude, lng: cluster.cluster_longitude });
+      });
+
+      marker.setMap(map);
+      return marker;
+    });
+  }, [map, clusters]);
+
+  useEffect(() => {
+    return () => {
+      for (const m of markersRef.current) {
+        google.maps.event.clearInstanceListeners(m);
+        m.setMap(null);
+      }
+      markersRef.current = [];
+      keyRef.current = '';
     };
   }, []);
 
@@ -189,34 +357,69 @@ export default function AerialViewPage({
   const [filterStatus, setFilterStatus] = useState('');
   const debouncedSearch = useDebounce(search, 400);
 
-  const statusArray = filterStatus ? [filterStatus] : undefined;
+  // Viewport state — updated only by user interaction (drag/zoom), never by idle
+  const [viewport, setViewport] = useState<MapViewport | null>(null);
 
-  // Map query — fixed center+radius, no viewport tracking, no feedback loop.
+  const statusArray = filterStatus ? [filterStatus] : undefined;
+  const isClusterMode = (viewport?.zoom ?? DEFAULT_ZOOM) <= CLUSTER_ZOOM_THRESHOLD;
+
+  // ── Cluster query (zoom <= 11) ──────────────────────────────────────────
   const {
-    data: mapData,
-    isLoading: mapLoading,
-    isError: mapError,
+    data: clusterData,
+    isLoading: clusterLoading,
   } = useQuery({
-    queryKey: ['aerial-map-stores', statusArray],
+    queryKey: [
+      'aerial-clusters',
+      viewport?.bounds.minLat,
+      viewport?.bounds.minLng,
+      viewport?.bounds.maxLat,
+      viewport?.bounds.maxLng,
+      viewport?.zoom,
+      statusArray,
+    ],
     queryFn: () =>
-      mapListStoresAction({
-        centerLat: DEFAULT_CENTER.lat,
-        centerLng: DEFAULT_CENTER.lng,
-        radiusMeters: 5_000_000,
+      mapStoreClustersAction({
+        minLat: viewport!.bounds.minLat,
+        minLng: viewport!.bounds.minLng,
+        maxLat: viewport!.bounds.maxLat,
+        maxLng: viewport!.bounds.maxLng,
+        zoom: viewport!.zoom,
         statuses: statusArray,
-        limit: 500,
       }),
-    enabled: !debouncedSearch,
+    enabled: isClusterMode && !!viewport && !debouncedSearch,
     staleTime: 30_000,
   });
 
-  // Search query — only when user types in search bar.
+  // ── Individual stores query (zoom >= 12) ────────────────────────────────
+  const {
+    data: markerData,
+    isLoading: markerLoading,
+  } = useQuery({
+    queryKey: [
+      'aerial-markers',
+      viewport?.center.lat,
+      viewport?.center.lng,
+      viewport?.radiusMeters,
+      statusArray,
+    ],
+    queryFn: () =>
+      mapListStoresAction({
+        centerLat: viewport!.center.lat,
+        centerLng: viewport!.center.lng,
+        radiusMeters: viewport!.radiusMeters,
+        statuses: statusArray,
+      }),
+    enabled: !isClusterMode && !!viewport && !debouncedSearch,
+    staleTime: 30_000,
+  });
+
+  // ── Search query (when user types) ──────────────────────────────────────
   const {
     data: searchData,
     isLoading: searchLoading,
     isError: searchError,
   } = useQuery({
-    queryKey: ['aerial-search-stores', debouncedSearch, statusArray],
+    queryKey: ['aerial-search', debouncedSearch, statusArray],
     queryFn: () =>
       listStoresAction({
         page: 1,
@@ -230,10 +433,17 @@ export default function AerialViewPage({
     staleTime: 30_000,
   });
 
-  const isLoading = debouncedSearch ? searchLoading : mapLoading;
-  const isError = debouncedSearch ? searchError : mapError;
+  // ── Derive display data ─────────────────────────────────────────────────
 
-  // Merge data into a single StoreItem array
+  const isLoading = debouncedSearch
+    ? searchLoading
+    : isClusterMode
+      ? clusterLoading
+      : markerLoading;
+
+  const isError = debouncedSearch ? searchError : false;
+
+  // Stores for sidebar + individual markers (when not in cluster mode or searching)
   const stores: StoreItem[] = useMemo(() => {
     if (debouncedSearch) {
       return (searchData?.stores ?? [])
@@ -249,17 +459,32 @@ export default function AerialViewPage({
           lng: s.longitude!,
         }));
     }
-    return (mapData ?? []).map((s) => ({
-      store_id: s.store_id,
-      name: s.name,
-      status: s.status,
-      city_name: s.city_name,
-      state_name: s.state_name,
-      authorized_devices_count: s.authorized_devices_count,
-      lat: s.latitude,
-      lng: s.longitude,
-    }));
-  }, [debouncedSearch, mapData, searchData]);
+    if (!isClusterMode) {
+      return (markerData ?? []).map((s) => ({
+        store_id: s.store_id,
+        name: s.name,
+        status: s.status,
+        city_name: s.city_name,
+        state_name: s.state_name,
+        authorized_devices_count: s.authorized_devices_count,
+        lat: s.latitude,
+        lng: s.longitude,
+      }));
+    }
+    return [];
+  }, [debouncedSearch, searchData, isClusterMode, markerData]);
+
+  const clusters = useMemo(() => clusterData ?? [], [clusterData]);
+
+  // Total store count for sidebar header in cluster mode
+  const clusterTotalStores = useMemo(
+    () => clusters.reduce((sum, c) => sum + c.stores_count, 0),
+    [clusters]
+  );
+
+  const handleViewportChange = useCallback((vp: MapViewport) => {
+    setViewport(vp);
+  }, []);
 
   const handleReset = useCallback(() => {
     setSearch('');
@@ -298,7 +523,7 @@ export default function AerialViewPage({
         </div>
       </div>
 
-      {/* Map + Sidebar — fixed height so sidebar scroll stays contained */}
+      {/* Map + Sidebar */}
       <div className="flex gap-[20px]" style={{ height: 'calc(100vh - 220px)' }}>
         {/* Map card */}
         <div className="flex-1 min-w-0 rounded-[15px] overflow-hidden border border-[#E5E5EA] bg-white">
@@ -319,7 +544,17 @@ export default function AerialViewPage({
                 gestureHandling="greedy"
                 style={{ width: '100%', height: '100%' }}
               >
-                <StoreMarkers stores={stores} onSelect={handleSelectStore} />
+                <MapViewController onViewportChange={handleViewportChange} />
+
+                {/* Cluster mode: server-side clusters as circle markers */}
+                {isClusterMode && !debouncedSearch && (
+                  <ClusterMarkers clusters={clusters} />
+                )}
+
+                {/* Marker mode: individual store markers with client-side clustering */}
+                {(!isClusterMode || !!debouncedSearch) && (
+                  <StoreMarkers stores={stores} onSelect={handleSelectStore} />
+                )}
 
                 {selectedStore && (
                   <InfoWindow
@@ -372,13 +607,15 @@ export default function AerialViewPage({
           )}
         </div>
 
-        {/* Sidebar card — same height as map, scroll stays inside */}
+        {/* Sidebar card */}
         <div className="w-[320px] flex-shrink-0 bg-white rounded-[15px] border border-[#E5E5EA] flex flex-col min-h-0">
-          {/* Header — fixed */}
+          {/* Header */}
           <div className="px-[20px] py-[16px] border-b border-[#E5E5EA] flex-shrink-0">
             <p className="text-[15px] font-semibold text-[#161616]">{t('storesOnMap')}</p>
             <p className="text-[12px] text-[#667085] mt-0.5">
-              {stores.length} {t('withCoords')}
+              {isClusterMode && !debouncedSearch
+                ? `${clusterTotalStores} ${t('withCoords')}`
+                : `${stores.length} ${t('withCoords')}`}
             </p>
           </div>
 
@@ -392,6 +629,51 @@ export default function AerialViewPage({
               <div className="px-[20px] py-12 text-center">
                 <p className="text-[13px] text-[#FF4163]">{tStores('errorLoading')}</p>
               </div>
+            ) : isClusterMode && !debouncedSearch ? (
+              /* Cluster mode: show cluster summaries */
+              clusters.length === 0 ? (
+                <div className="px-[20px] py-12 text-center">
+                  <MapPin className="w-10 h-10 text-[#D0D5DD] mx-auto mb-2" />
+                  <p className="text-[13px] text-[#667085]">{tCommon('noResults')}</p>
+                </div>
+              ) : (
+                clusters.map((cluster) => (
+                  <div
+                    key={cluster.cluster_key}
+                    className="w-full px-[20px] py-[12px] border-b border-[#F5F5F5]"
+                  >
+                    <p className="text-[13px] font-medium text-[#191919]">
+                      {cluster.stores_count} {tStores('title').toLowerCase()}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      {cluster.operational_count > 0 && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: STATUS_COLOR.operational }} />
+                          <span className="text-[11px] text-[#667085]">{cluster.operational_count}</span>
+                        </div>
+                      )}
+                      {cluster.new_store_count > 0 && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: STATUS_COLOR.new_store }} />
+                          <span className="text-[11px] text-[#667085]">{cluster.new_store_count}</span>
+                        </div>
+                      )}
+                      {cluster.maintenance_count > 0 && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: STATUS_COLOR.maintenance }} />
+                          <span className="text-[11px] text-[#667085]">{cluster.maintenance_count}</span>
+                        </div>
+                      )}
+                      {cluster.inactive_count > 0 && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-[6px] h-[6px] rounded-full" style={{ backgroundColor: STATUS_COLOR.inactive }} />
+                          <span className="text-[11px] text-[#667085]">{cluster.inactive_count}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )
             ) : stores.length === 0 ? (
               <div className="px-[20px] py-12 text-center">
                 <MapPin className="w-10 h-10 text-[#D0D5DD] mx-auto mb-2" />
@@ -421,7 +703,7 @@ export default function AerialViewPage({
             )}
           </div>
 
-          {/* Legend — fixed at bottom */}
+          {/* Legend */}
           <div className="px-[20px] py-[16px] border-t border-[#E5E5EA] flex-shrink-0">
             <p className="text-[11px] font-semibold text-[#667085] uppercase tracking-wider mb-2">
               {t('legend')}

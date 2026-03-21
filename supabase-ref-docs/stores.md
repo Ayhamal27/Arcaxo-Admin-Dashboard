@@ -565,7 +565,7 @@ Devuelve clusters de tiendas para el mapa admin usando `viewport + zoom`. Está 
 | `cluster_key` | `text` | Id estable del cluster (`z:tile_x:tile_y`) |
 | `cluster_zoom` | `int` | Zoom efectivo usado para tileado |
 | `tile_x`, `tile_y` | `bigint` | Coordenadas de tile Web Mercator |
-| `cluster_latitude`, `cluster_longitude` | `float8` | Centro del cluster |
+| `cluster_latitude`, `cluster_longitude` | `float8` | Centroide del cluster (`AVG(lat)`, `AVG(lon)` de las tiendas agrupadas) |
 | `stores_count` | `int` | Total de tiendas en el cluster |
 | `new_store_count`, `operational_count`, `maintenance_count`, `inactive_count` | `int` | Conteos por estado |
 | `sample_store_ids` | `uuid[]` | Hasta 3 tiendas de referencia |
