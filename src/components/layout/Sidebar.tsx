@@ -130,15 +130,15 @@ function NavItem({ item, locale, active, label, onNavigate }: NavItemProps) {
         href={`/${locale}${item.href}`}
         onClick={onNavigate}
         className={cn(
-          'flex items-center gap-[41px] px-6 py-3 relative transition-colors',
-          'text-[21.5px] leading-tight',
+          'flex items-center gap-[25px] px-6 py-2.5 relative transition-colors',
+          'text-[15px] leading-tight',
           active
             ? 'text-[#0000FF] font-semibold before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[7px] before:bg-[#0000FF] before:rounded-r-[4px]'
             : 'text-[#191919] font-normal hover:bg-[#F5F5FF]'
         )}
       >
         <Icon
-          className={cn('w-6 h-6 flex-shrink-0', active ? 'text-[#0000FF]' : 'text-[#82A2C2]')}
+          className={cn('w-5 h-5 flex-shrink-0', active ? 'text-[#0000FF]' : 'text-[#82A2C2]')}
         />
         <span>{label}</span>
       </Link>

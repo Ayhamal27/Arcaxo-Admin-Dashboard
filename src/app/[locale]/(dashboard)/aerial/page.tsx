@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import { APIProvider, Map, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { mapListStoresAction, mapStoreClustersAction } from '@/actions/stores/map-stores';
-import { listStoresAction } from '@/actions/stores/list-stores';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { SearchInput, FilterSelect, ResetButton } from '@/components/layout/PageActionBar';
 import type { RpcAdminMapStoreClustersOutputItem } from '@/types/rpc-outputs';
@@ -151,11 +150,16 @@ function MapViewController({
 
     // Only react to user drag and zoom — NOT idle
     const dragListener = map.addListener('dragend', emit);
+
+    // Debounce zoom_changed — Google fires it multiple times during animated zoom
+    let zoomTimer: ReturnType<typeof setTimeout> | null = null;
     const zoomListener = map.addListener('zoom_changed', () => {
-      setTimeout(emit, 150);
+      if (zoomTimer) clearTimeout(zoomTimer);
+      zoomTimer = setTimeout(emit, 350);
     });
 
     return () => {
+      if (zoomTimer) clearTimeout(zoomTimer);
       google.maps.event.removeListener(tilesListener);
       google.maps.event.removeListener(dragListener);
       google.maps.event.removeListener(zoomListener);
@@ -340,6 +344,25 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+// ─── Viewport quantization — reduces cache misses from micro-movements ──────
+
+function quantizeViewport(vp: MapViewport): MapViewport {
+  return {
+    zoom: vp.zoom,
+    center: {
+      lat: Math.round(vp.center.lat * 100) / 100, // ~1.1km precision
+      lng: Math.round(vp.center.lng * 100) / 100,
+    },
+    bounds: {
+      minLat: Math.round(vp.bounds.minLat * 100) / 100,
+      minLng: Math.round(vp.bounds.minLng * 100) / 100,
+      maxLat: Math.round(vp.bounds.maxLat * 100) / 100,
+      maxLng: Math.round(vp.bounds.maxLng * 100) / 100,
+    },
+    radiusMeters: Math.round(vp.radiusMeters / 1000) * 1000, // round to nearest km
+  };
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AerialViewPage({
@@ -355,10 +378,13 @@ export default function AerialViewPage({
   const [selectedStore, setSelectedStore] = useState<StoreItem | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const debouncedSearch = useDebounce(search, 400);
 
   // Viewport state — updated only by user interaction (drag/zoom), never by idle
-  const [viewport, setViewport] = useState<MapViewport | null>(null);
+  const [rawViewport, setRawViewport] = useState<MapViewport | null>(null);
+  // Debounce viewport 500ms to prevent request storms during drag/zoom
+  const viewport = useDebounce(rawViewport, 500);
+  // Quantized viewport for query keys — reduces cache misses from sub-km movements
+  const qvp = useMemo(() => (viewport ? quantizeViewport(viewport) : null), [viewport]);
 
   const statusArray = filterStatus ? [filterStatus] : undefined;
   const isClusterMode = (viewport?.zoom ?? DEFAULT_ZOOM) <= CLUSTER_ZOOM_THRESHOLD;
@@ -370,11 +396,11 @@ export default function AerialViewPage({
   } = useQuery({
     queryKey: [
       'aerial-clusters',
-      viewport?.bounds.minLat,
-      viewport?.bounds.minLng,
-      viewport?.bounds.maxLat,
-      viewport?.bounds.maxLng,
-      viewport?.zoom,
+      qvp?.bounds.minLat,
+      qvp?.bounds.minLng,
+      qvp?.bounds.maxLat,
+      qvp?.bounds.maxLng,
+      qvp?.zoom,
       statusArray,
     ],
     queryFn: () =>
@@ -386,20 +412,20 @@ export default function AerialViewPage({
         zoom: viewport!.zoom,
         statuses: statusArray,
       }),
-    enabled: isClusterMode && !!viewport && !debouncedSearch,
-    staleTime: 30_000,
+    enabled: isClusterMode && !!viewport && !search,
+    staleTime: 60_000,
   });
 
-  // ── Individual stores query (zoom >= 12) ────────────────────────────────
+  // ── Individual stores query (zoom >= 12, or any zoom when searching) ───
   const {
     data: markerData,
     isLoading: markerLoading,
   } = useQuery({
     queryKey: [
       'aerial-markers',
-      viewport?.center.lat,
-      viewport?.center.lng,
-      viewport?.radiusMeters,
+      qvp?.center.lat,
+      qvp?.center.lng,
+      qvp?.radiusMeters,
       statusArray,
     ],
     queryFn: () =>
@@ -409,58 +435,18 @@ export default function AerialViewPage({
         radiusMeters: viewport!.radiusMeters,
         statuses: statusArray,
       }),
-    enabled: !isClusterMode && !!viewport && !debouncedSearch,
-    staleTime: 30_000,
-  });
-
-  // ── Search query (when user types) ──────────────────────────────────────
-  const {
-    data: searchData,
-    isLoading: searchLoading,
-    isError: searchError,
-  } = useQuery({
-    queryKey: ['aerial-search', debouncedSearch, statusArray],
-    queryFn: () =>
-      listStoresAction({
-        page: 1,
-        pageSize: 500,
-        search: debouncedSearch,
-        sortBy: 'name',
-        sortOrder: 'asc',
-        filterStatus: statusArray,
-      }),
-    enabled: !!debouncedSearch,
-    staleTime: 30_000,
+    enabled: (!isClusterMode || !!search) && !!viewport,
+    staleTime: 60_000,
   });
 
   // ── Derive display data ─────────────────────────────────────────────────
 
-  const isLoading = debouncedSearch
-    ? searchLoading
-    : isClusterMode
-      ? clusterLoading
-      : markerLoading;
+  const isLoading = isClusterMode && !search ? clusterLoading : markerLoading;
 
-  const isError = debouncedSearch ? searchError : false;
-
-  // Stores for sidebar + individual markers (when not in cluster mode or searching)
-  const stores: StoreItem[] = useMemo(() => {
-    if (debouncedSearch) {
-      return (searchData?.stores ?? [])
-        .filter((s) => s.latitude != null && s.longitude != null)
-        .map((s) => ({
-          store_id: s.store_id,
-          name: s.name,
-          status: s.status,
-          city_name: s.city_name,
-          state_name: s.state_name,
-          authorized_devices_count: s.authorized_devices_count,
-          lat: s.latitude!,
-          lng: s.longitude!,
-        }));
-    }
-    if (!isClusterMode) {
-      return (markerData ?? []).map((s) => ({
+  // All stores from map RPC mapped to StoreItem
+  const allStores: StoreItem[] = useMemo(
+    () =>
+      (markerData ?? []).map((s) => ({
         store_id: s.store_id,
         name: s.name,
         status: s.status,
@@ -469,10 +455,26 @@ export default function AerialViewPage({
         authorized_devices_count: s.authorized_devices_count,
         lat: s.latitude,
         lng: s.longitude,
-      }));
-    }
-    return [];
-  }, [debouncedSearch, searchData, isClusterMode, markerData]);
+      })),
+    [markerData]
+  );
+
+  // Client-side text filter — instant, no network call
+  const filteredStores: StoreItem[] = useMemo(() => {
+    if (!search.trim()) return allStores;
+    const q = search.trim().toLowerCase();
+    return allStores.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.city_name?.toLowerCase().includes(q) ||
+        s.state_name?.toLowerCase().includes(q) ||
+        s.store_id.toLowerCase().includes(q)
+    );
+  }, [allStores, search]);
+
+  // Sidebar items: filtered stores when searching, all stores when not (cluster mode shows clusters)
+  const sidebarStores = filteredStores;
+  const mapStores = filteredStores;
 
   const clusters = useMemo(() => clusterData ?? [], [clusterData]);
 
@@ -483,7 +485,7 @@ export default function AerialViewPage({
   );
 
   const handleViewportChange = useCallback((vp: MapViewport) => {
-    setViewport(vp);
+    setRawViewport(vp);
   }, []);
 
   const handleReset = useCallback(() => {
@@ -547,13 +549,13 @@ export default function AerialViewPage({
                 <MapViewController onViewportChange={handleViewportChange} />
 
                 {/* Cluster mode: server-side clusters as circle markers */}
-                {isClusterMode && !debouncedSearch && (
+                {isClusterMode && !search && (
                   <ClusterMarkers clusters={clusters} />
                 )}
 
                 {/* Marker mode: individual store markers with client-side clustering */}
-                {(!isClusterMode || !!debouncedSearch) && (
-                  <StoreMarkers stores={stores} onSelect={handleSelectStore} />
+                {(!isClusterMode || !!search) && (
+                  <StoreMarkers stores={mapStores} onSelect={handleSelectStore} />
                 )}
 
                 {selectedStore && (
@@ -613,9 +615,9 @@ export default function AerialViewPage({
           <div className="px-[20px] py-[16px] border-b border-[#E5E5EA] flex-shrink-0">
             <p className="text-[15px] font-semibold text-[#161616]">{t('storesOnMap')}</p>
             <p className="text-[12px] text-[#667085] mt-0.5">
-              {isClusterMode && !debouncedSearch
+              {isClusterMode && !search
                 ? `${clusterTotalStores} ${t('withCoords')}`
-                : `${stores.length} ${t('withCoords')}`}
+                : `${sidebarStores.length} ${t('withCoords')}`}
             </p>
           </div>
 
@@ -625,11 +627,7 @@ export default function AerialViewPage({
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-[#0000FF] border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : isError ? (
-              <div className="px-[20px] py-12 text-center">
-                <p className="text-[13px] text-[#FF4163]">{tStores('errorLoading')}</p>
-              </div>
-            ) : isClusterMode && !debouncedSearch ? (
+            ) : isClusterMode && !search ? (
               /* Cluster mode: show cluster summaries */
               clusters.length === 0 ? (
                 <div className="px-[20px] py-12 text-center">
@@ -674,13 +672,13 @@ export default function AerialViewPage({
                   </div>
                 ))
               )
-            ) : stores.length === 0 ? (
+            ) : sidebarStores.length === 0 ? (
               <div className="px-[20px] py-12 text-center">
                 <MapPin className="w-10 h-10 text-[#D0D5DD] mx-auto mb-2" />
                 <p className="text-[13px] text-[#667085]">{tCommon('noResults')}</p>
               </div>
             ) : (
-              stores.map((store) => (
+              sidebarStores.map((store) => (
                 <button
                   key={store.store_id}
                   onClick={() => setSelectedStore(store)}
