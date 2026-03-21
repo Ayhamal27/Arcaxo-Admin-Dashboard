@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { APIProvider, Map, AdvancedMarker, InfoWindow } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { listStoresAction } from '@/actions/stores/list-stores';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { RpcAdminListStoresOutputItem } from '@/types/rpc-outputs';
@@ -13,6 +13,66 @@ const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 const DEFAULT_CENTER = { lat: 23.6345, lng: -102.5528 }; // Centro de México
 const DEFAULT_ZOOM = 5;
+
+interface StoreWithCoords {
+  store_id: string;
+  status: string;
+  coords: { lat: number; lng: number };
+}
+
+function StoreMarkers({
+  stores,
+  onSelect,
+}: {
+  stores: StoreWithCoords[];
+  onSelect: (id: string) => void;
+}) {
+  const map = useMap();
+
+  const handleSelect = useCallback(onSelect, [onSelect]);
+
+  useEffect(() => {
+    if (!map || !window.google) return;
+
+    const markers = stores.map((store) => {
+      const color = STATUS_DOT[store.status] ?? '#667085';
+      const marker = new google.maps.Marker({
+        position: store.coords,
+        map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+          scale: 7,
+        },
+        cursor: 'pointer',
+      });
+      marker.addListener('click', () => handleSelect(store.store_id));
+      return marker;
+    });
+
+    return () => {
+      markers.forEach((m) => m.setMap(null));
+    };
+  }, [map, stores, handleSelect]);
+
+  return null;
+}
+
+function coordsFromMapsUrl(url?: string | null): { lat: number; lng: number } | null {
+  if (!url) return null;
+  try {
+    const query = new URL(url).searchParams.get('query');
+    if (!query) return null;
+    const [lat, lng] = query.split(',').map(Number);
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
 
 const STATUS_DOT: Record<string, string> = {
   active: '#228D70',
@@ -40,13 +100,12 @@ export default function VistaAereaPage({
       }),
   });
 
-  const stores = (data?.stores ?? []).filter(
-    (s) => s.latitude != null && s.longitude != null
-  );
+  const allStores = data?.stores ?? [];
+  const stores = allStores
+    .map((s) => ({ ...s, coords: coordsFromMapsUrl(s.google_maps_url) }))
+    .filter((s) => s.coords != null) as (typeof allStores[0] & { coords: { lat: number; lng: number } })[];
 
-  const storesWithoutCoords = (data?.stores ?? []).filter(
-    (s) => s.latitude == null || s.longitude == null
-  );
+  const storesWithoutCoords = allStores.filter((s) => !coordsFromMapsUrl(s.google_maps_url));
 
   return (
     <div>
@@ -79,27 +138,18 @@ export default function VistaAereaPage({
               <Map
                 defaultCenter={DEFAULT_CENTER}
                 defaultZoom={DEFAULT_ZOOM}
-                mapId="arcaxo-aerial-view"
                 disableDefaultUI={false}
                 gestureHandling="greedy"
                 style={{ width: '100%', height: '100%' }}
               >
-                {stores.map((store) => (
-                  <AdvancedMarker
-                    key={store.store_id}
-                    position={{ lat: store.latitude!, lng: store.longitude! }}
-                    onClick={() => setSelectedStore(store)}
-                  >
-                    <div
-                      className="w-[14px] h-[14px] rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-125"
-                      style={{ backgroundColor: STATUS_DOT[store.status] ?? '#667085' }}
-                    />
-                  </AdvancedMarker>
-                ))}
+                <StoreMarkers
+                  stores={stores}
+                  onSelect={(id) => setSelectedStore(allStores.find((s) => s.store_id === id) ?? null)}
+                />
 
-                {selectedStore && selectedStore.latitude && selectedStore.longitude && (
+                {selectedStore && coordsFromMapsUrl(selectedStore.google_maps_url) && (
                   <InfoWindow
-                    position={{ lat: selectedStore.latitude, lng: selectedStore.longitude }}
+                    position={coordsFromMapsUrl(selectedStore.google_maps_url)!}
                     onCloseClick={() => setSelectedStore(null)}
                   >
                     <div className="p-2 min-w-[200px]">
