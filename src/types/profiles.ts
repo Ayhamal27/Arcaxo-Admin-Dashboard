@@ -1,23 +1,19 @@
-import { ProfileRole, ProfileStatus } from './database';
+// Re-export from centralized types
+export { ProfileRole, ProfileStatus } from './database';
+export type { Profile } from './entities';
 
-export { ProfileRole, ProfileStatus };
-
-export interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  phone: string | null;
-  avatar_url: string | null;
-  role: ProfileRole;
-  status: ProfileStatus;
-  created_at: string;
-  updated_at: string;
-}
-
+/**
+ * UserAccessGateResult — output of rpc_user_access_gate
+ */
 export interface UserAccessGateResult {
-  can_access: boolean;
-  access_code: string;
+  user_id: string;
+  email: string;
+  country_code?: string;
   role: string | null;
   status: string | null;
-  message: string | null;
+  agent_scope: string;
+  has_profile: boolean;
+  can_access: boolean;
+  access_code: string;
+  access_message: string;
 }
