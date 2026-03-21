@@ -1,8 +1,10 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { APIProvider, Map, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { listStoresAction } from '@/actions/stores/list-stores';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { RpcAdminListStoresOutputItem } from '@/types/rpc-outputs';
@@ -11,8 +13,31 @@ import Link from 'next/link';
 
 const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
-const DEFAULT_CENTER = { lat: 23.6345, lng: -102.5528 }; // Centro de México
+const DEFAULT_CENTER = { lat: 8.0, lng: -66.0 };
 const DEFAULT_ZOOM = 5;
+
+function createStoreMarkerIcon(): google.maps.Icon {
+  // Circle (r=13, center 16,14) with a short tail pointing down
+  // At y=24 the circle intersects at x≈8 and x≈24 — tail joins there
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+    <path d="M16 38 L8 24 A13 13 0 1 1 24 24 Z" fill="#0000FF"/>
+    <circle cx="16" cy="14" r="13" fill="none" stroke="white" stroke-width="2"/>
+    <path d="M8 24 L16 38 L24 24" fill="none" stroke="white" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(8.8, 6.8) scale(0.6)" stroke="white" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+      <line x1="2" y1="7" x2="22" y2="7"/>
+    </g>
+  </svg>`;
+  return {
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+    scaledSize: new google.maps.Size(32, 40),
+    anchor: new google.maps.Point(16, 38),
+  };
+}
 
 interface StoreWithCoords {
   store_id: string;
@@ -28,33 +53,42 @@ function StoreMarkers({
   onSelect: (id: string) => void;
 }) {
   const map = useMap();
-
+  const clustererRef = useRef<MarkerClusterer | null>(null);
   const handleSelect = useCallback(onSelect, [onSelect]);
+  const didFitRef = useRef(false);
 
   useEffect(() => {
-    if (!map || !window.google) return;
+    if (!map || !window.google || stores.length === 0) return;
 
+    // fitBounds on first load only
+    if (!didFitRef.current) {
+      const bounds = new google.maps.LatLngBounds();
+      stores.forEach((s) => bounds.extend(s.coords));
+      map.fitBounds(bounds, 60);
+      didFitRef.current = true;
+    }
+
+    // Build markers (no map assigned — clusterer manages placement)
     const markers = stores.map((store) => {
-      const color = STATUS_DOT[store.status] ?? '#667085';
       const marker = new google.maps.Marker({
         position: store.coords,
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: color,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-          scale: 7,
-        },
+        icon: createStoreMarkerIcon(),
         cursor: 'pointer',
       });
       marker.addListener('click', () => handleSelect(store.store_id));
       return marker;
     });
 
+    // Create or update clusterer
+    if (clustererRef.current) {
+      clustererRef.current.clearMarkers();
+    } else {
+      clustererRef.current = new MarkerClusterer({ map });
+    }
+    clustererRef.current.addMarkers(markers);
+
     return () => {
-      markers.forEach((m) => m.setMap(null));
+      clustererRef.current?.clearMarkers();
     };
   }, [map, stores, handleSelect]);
 
@@ -87,6 +121,7 @@ export default function VistaAereaPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = use(params);
+  const t = useTranslations('aerial');
   const [selectedStore, setSelectedStore] = useState<RpcAdminListStoresOutputItem | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -109,7 +144,7 @@ export default function VistaAereaPage({
 
   return (
     <div>
-      <Breadcrumb locale={locale} items={[{ label: 'Vista Aérea' }]} />
+      <Breadcrumb locale={locale} items={[{ label: t('title') }]} />
 
       <div className="flex gap-6" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
         {/* Map */}
@@ -118,7 +153,7 @@ export default function VistaAereaPage({
             <div className="w-full h-full bg-[#F5F5F5] flex items-center justify-center">
               <div className="text-center">
                 <div className="w-8 h-8 border-2 border-[#0000FF] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-[14px] text-[#667085]">Cargando mapa...</p>
+                <p className="text-[14px] text-[#667085]">{t('loadingMap')}</p>
               </div>
             </div>
           ) : !MAPS_API_KEY ? (
@@ -126,10 +161,10 @@ export default function VistaAereaPage({
               <div className="text-center px-8">
                 <MapPin className="w-12 h-12 text-[#D0D5DD] mx-auto mb-3" />
                 <p className="text-[16px] font-semibold text-[#191919] mb-1">
-                  API Key no configurada
+                  {t('noApiKey')}
                 </p>
                 <p className="text-[14px] text-[#667085]">
-                  Agrega NEXT_PUBLIC_GOOGLE_MAPS_API_KEY en las variables de entorno
+                  {t('noApiKeyDesc')}
                 </p>
               </div>
             </div>
@@ -186,10 +221,10 @@ export default function VistaAereaPage({
                       </p>
 
                       <Link
-                        href={`/${locale}/tiendas/${selectedStore.store_id}`}
+                        href={`/${locale}/stores/${selectedStore.store_id}`}
                         className="text-[12px] text-[#0000FF] hover:underline"
                       >
-                        Ver detalle →
+                        {t('viewDetail')} →
                       </Link>
                     </div>
                   </InfoWindow>
@@ -203,11 +238,11 @@ export default function VistaAereaPage({
         <div className="w-[280px] flex-shrink-0 bg-white rounded-[15px] border border-[#E5E5EA] flex flex-col overflow-hidden">
           <div className="p-4 border-b border-[#E5E5EA]">
             <p className="text-[15px] font-semibold text-[#161616]">
-              Tiendas en el mapa
+              {t('storesOnMap')}
             </p>
             <p className="text-[12px] text-[#667085] mt-0.5">
-              {stores.length} con coordenadas
-              {storesWithoutCoords.length > 0 && `, ${storesWithoutCoords.length} sin ubicación`}
+              {stores.length} {t('withCoords')}
+              {storesWithoutCoords.length > 0 && `, ${storesWithoutCoords.length} ${t('withoutLocation')}`}
             </p>
           </div>
 
@@ -237,13 +272,13 @@ export default function VistaAereaPage({
               <>
                 <div className="px-4 py-2 bg-[#F9F9F9]">
                   <p className="text-[11px] font-semibold text-[#667085] uppercase tracking-wider">
-                    Sin coordenadas
+                    {t('withoutCoords')}
                   </p>
                 </div>
                 {storesWithoutCoords.map((store) => (
                   <Link
                     key={store.store_id}
-                    href={`/${locale}/tiendas/${store.store_id}`}
+                    href={`/${locale}/stores/${store.store_id}`}
                     className="block px-4 py-3 border-b border-[#F5F5F5] hover:bg-[#F8F8FF] transition-colors"
                   >
                     <p className="text-[13px] text-[#667085] truncate">{store.name}</p>
@@ -256,15 +291,15 @@ export default function VistaAereaPage({
           {/* Legend */}
           <div className="p-4 border-t border-[#E5E5EA]">
             <p className="text-[11px] font-semibold text-[#667085] uppercase tracking-wider mb-2">
-              Leyenda
+              {t('legend')}
             </p>
             <div className="space-y-1.5">
-              {Object.entries({
-                active: 'Activa',
-                inactive: 'Inactiva',
-                suspended: 'Suspendida',
-                pending: 'Pendiente',
-              }).map(([status, label]) => (
+              {([
+                ['active', t('statusActive')],
+                ['inactive', t('statusInactive')],
+                ['suspended', t('statusSuspended')],
+                ['pending', t('statusPending')],
+              ] as [string, string][]).map(([status, label]) => (
                 <div key={status} className="flex items-center gap-2">
                   <div
                     className="w-[10px] h-[10px] rounded-full flex-shrink-0"

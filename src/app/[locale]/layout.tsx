@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getMessages } from 'next-intl/server';
+import { getMessages, setRequestLocale } from 'next-intl/server';
 import { NextIntlClientProvider } from 'next-intl';
 import { routing } from '@/i18n/routing';
 
@@ -20,7 +20,10 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const messages = await getMessages();
+  // Must be called before any next-intl server functions so getMessages reads the right locale
+  setRequestLocale(locale);
+
+  const messages = await getMessages({ locale } as Parameters<typeof getMessages>[0]);
 
   return (
     <NextIntlClientProvider messages={messages} locale={locale}>

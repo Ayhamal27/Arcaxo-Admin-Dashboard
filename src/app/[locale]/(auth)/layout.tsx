@@ -13,7 +13,7 @@ export default async function AuthLayout({
   const authenticated = await isAuthenticatedAction();
 
   if (authenticated) {
-    redirect('/tiendas');
+    redirect('/es/stores');
   }
 
   return (

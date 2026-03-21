@@ -45,7 +45,7 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
       <Breadcrumb
         locale={locale}
         items={[
-          { label: 'Dispositivos', href: `/${locale}/dispositivos` },
+          { label: 'Dispositivos', href: `/${locale}/devices` },
           { label: sensor.serial },
         ]}
       />
@@ -183,7 +183,7 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
       {/* Back link */}
       <div className="mt-4">
         <Link
-          href={`/${locale}/dispositivos`}
+          href={`/${locale}/devices`}
           className="text-[14px] text-[#0000FF] hover:underline"
         >
           ← Volver a dispositivos

@@ -71,7 +71,7 @@ export function SensorActionsClient({
 
       toast.success('Sensor decomisionado');
       setShowDecommissionModal(false);
-      router.push(`/${locale}/dispositivos`);
+      router.push(`/${locale}/devices`);
     } finally {
       setIsLoading(false);
     }

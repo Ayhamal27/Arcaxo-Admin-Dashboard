@@ -106,7 +106,7 @@ export default function TiendasPage({
               className="text-[13px] text-[#0000FF] hover:underline truncate max-w-[160px]"
               onClick={(e) => e.stopPropagation()}
             >
-              Ver mapa
+              {t('viewMap')}
             </a>
           )}
         </div>
@@ -128,10 +128,10 @@ export default function TiendasPage({
       render: (row) => (
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Link
-            href={`/${locale}/tiendas/${row.store_id}`}
+            href={`/${locale}/stores/${row.store_id}`}
             className="px-4 py-2 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors whitespace-nowrap"
           >
-            Ampliar
+            {tCommon('expand')}
           </Link>
         </div>
       ),
@@ -158,13 +158,13 @@ export default function TiendasPage({
   const totalPages = Math.ceil(total / pagination.pageSize);
 
   return (
-    <div>
+    <div className="flex flex-col flex-1">
       <Breadcrumb locale={locale} items={[{ label: t('title') }]} />
 
       <PageActionBar>
         <ActionButton
           icon={<Plus className="w-5 h-5" />}
-          onClick={() => router.push(`/${locale}/tiendas/nueva`)}
+          onClick={() => router.push(`/${locale}/stores/new`)}
         >
           {t('newStore')}
         </ActionButton>
@@ -181,10 +181,10 @@ export default function TiendasPage({
           onChange={handleSortChange}
           icon={<ArrowUpDown className="w-4 h-4" />}
         >
-          <option value="name:asc">Nombre A-Z</option>
-          <option value="name:desc">Nombre Z-A</option>
-          <option value="status:asc">Estado</option>
-          <option value="updated_at:desc">Más recientes</option>
+          <option value="name:asc">{t('sortNameAZ')}</option>
+          <option value="name:desc">{t('sortNameZA')}</option>
+          <option value="status:asc">{t('sortStatus')}</option>
+          <option value="updated_at:desc">{t('sortNewest')}</option>
         </FilterSelect>
 
         <ResetButton
@@ -197,24 +197,24 @@ export default function TiendasPage({
       {isLoading ? (
         <TableSkeleton rows={8} columns={6} />
       ) : isError ? (
-        <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-12 text-center">
+        <div className="flex-1 bg-white rounded-[15px] border border-[#E5E5EA] flex items-center justify-center">
           <p className="text-[16px] text-[#FF4163]">{tCommon('error')}</p>
+        </div>
+      ) : stores.length === 0 ? (
+        <div className="flex-1 bg-white rounded-[15px] border border-[#E5E5EA] flex items-center justify-center">
+          <EmptyState
+            title={t('noStores')}
+            description={t('noStoresDesc')}
+            actionLabel={t('newStore')}
+            onAction={() => router.push(`/${locale}/stores/new`)}
+          />
         </div>
       ) : (
         <>
           <DataTable
             data={stores}
             columns={columns}
-            isEmpty={stores.length === 0}
-            emptyContent={
-              <EmptyState
-                title="No hay tiendas registradas"
-                description="Crea la primera tienda para comenzar"
-                actionLabel={t('newStore')}
-                onAction={() => router.push(`/${locale}/tiendas/nueva`)}
-              />
-            }
-            onRowClick={(row) => router.push(`/${locale}/tiendas/${row.store_id}`)}
+            onRowClick={(row) => router.push(`/${locale}/stores/${row.store_id}`)}
           />
 
           <Pagination

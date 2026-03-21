@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createUserAction } from '@/actions/users/create-user';
+import { createStoreAction } from '@/actions/stores/create-store';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { StepProgress } from '@/components/shared/StepProgress';
 import { GeographySelects } from '@/components/shared/GeographySelects';
@@ -17,13 +17,18 @@ import { SecondaryButton } from '@/components/auth/secondary-button';
 // ─── Step 1 Schema ────────────────────────────────────────────────────────────
 
 const Step1Schema = z.object({
-  first_name: z.string().min(1, 'Nombre requerido').max(50),
-  last_name: z.string().min(1, 'Apellido requerido').max(50),
-  email: z.string().email('Email inválido'),
+  name: z.string().min(2, 'Mínimo 2 caracteres').max(100),
   phone_country_code: z.string().optional(),
   phone_number: z.string().optional(),
-  identity_document: z.string().optional(),
-  address: z.string().optional(),
+  address: z.string().min(5, 'Dirección requerida'),
+  latitude: z
+    .string()
+    .min(1, 'Latitud requerida')
+    .refine((v) => !isNaN(parseFloat(v)), 'Latitud inválida'),
+  longitude: z
+    .string()
+    .min(1, 'Longitud requerida')
+    .refine((v) => !isNaN(parseFloat(v)), 'Longitud inválida'),
 });
 
 type Step1FormData = z.infer<typeof Step1Schema>;
@@ -31,7 +36,11 @@ type Step1FormData = z.infer<typeof Step1Schema>;
 // ─── Step 2 Schema ────────────────────────────────────────────────────────────
 
 const Step2Schema = z.object({
-  role: z.enum(['owner', 'admin', 'manager', 'viewer', 'store_owner', 'installer']),
+  responsible_first_name: z.string().min(1, 'Nombre requerido'),
+  responsible_last_name: z.string().min(1, 'Apellido requerido'),
+  responsible_email: z.string().email('Email inválido'),
+  responsible_phone_country_code: z.string().optional(),
+  responsible_phone_number: z.string().optional(),
 });
 
 type Step2FormData = z.infer<typeof Step2Schema>;
@@ -68,7 +77,7 @@ interface GeoData {
   cityId?: number;
 }
 
-export default function NuevoUsuarioPage({
+export default function NuevaTiendaPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
@@ -99,45 +108,53 @@ export default function NuevoUsuarioPage({
   } = useForm<Step2FormData>({ resolver: zodResolver(Step2Schema) });
 
   const handleStep1 = (data: Step1FormData) => {
+    // Validate geography
+    const newGeoErrors: typeof geoErrors = {};
+    if (!geoData.countryId) newGeoErrors.country = 'País requerido';
+    if (!geoData.stateId) newGeoErrors.state = 'Estado requerido';
+    if (!geoData.cityId) newGeoErrors.city = 'Ciudad requerida';
+
+    if (Object.keys(newGeoErrors).length > 0) {
+      setGeoErrors(newGeoErrors);
+      return;
+    }
+
+    setGeoErrors({});
     setStep1Data(data);
     setCurrentStep(2);
   };
 
   const handleStep2 = async (data: Step2FormData) => {
-    if (!step1Data) return;
+    if (!step1Data || !geoData.cityId) return;
 
-    const geoValidationErrors: typeof geoErrors = {};
-    if (!geoData.cityId) geoValidationErrors.city = 'Ciudad requerida';
-
-    if (Object.keys(geoValidationErrors).length > 0) {
-      setGeoErrors(geoValidationErrors);
-      return;
-    }
-
-    setGeoErrors({});
     setIsSubmitting(true);
-
     try {
-      const result = await createUserAction({
-        first_name: step1Data.first_name,
-        last_name: step1Data.last_name,
-        email: step1Data.email,
+      const result = await createStoreAction({
+        name: step1Data.name,
+        city_id: geoData.cityId,
+        address: step1Data.address,
+        latitude: parseFloat(step1Data.latitude),
+        longitude: parseFloat(step1Data.longitude),
         phone_country_code: step1Data.phone_country_code || null,
         phone_number: step1Data.phone_number || null,
-        identity_document: step1Data.identity_document || null,
-        address: step1Data.address || null,
-        role: data.role,
-        city_id: geoData.cityId!,
+        responsible_first_name: data.responsible_first_name,
+        responsible_last_name: data.responsible_last_name,
+        responsible_email: data.responsible_email,
+        responsible_phone_country_code: data.responsible_phone_country_code || null,
+        responsible_phone_number: data.responsible_phone_number || null,
+        authorized_devices_count: 0,
       });
 
       if (!result.success) {
-        toast.error(result.error ?? 'Error al crear el usuario');
+        toast.error(result.error ?? 'Error al crear la tienda');
         setIsSubmitting(false);
         return;
       }
 
-      toast.success('Usuario creado exitosamente');
-      router.push(result.user_id ? `/${locale}/usuarios/${result.user_id}` : `/${locale}/usuarios`);
+      toast.success('Tienda creada exitosamente');
+      router.push(
+        result.store_id ? `/${locale}/stores/${result.store_id}` : `/${locale}/stores`
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error inesperado');
       setIsSubmitting(false);
@@ -149,8 +166,8 @@ export default function NuevoUsuarioPage({
       <Breadcrumb
         locale={locale}
         items={[
-          { label: 'Usuarios', href: `/${locale}/usuarios` },
-          { label: 'Crear nuevo usuario' },
+          { label: 'Tiendas', href: `/${locale}/stores` },
+          { label: 'Crear nueva tienda' },
         ]}
       />
 
@@ -161,41 +178,21 @@ export default function NuevoUsuarioPage({
         {currentStep === 1 && (
           <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-8">
             <h2 className="text-[20px] font-semibold text-[#161616] mb-6">
-              Datos personales
+              Datos generales de la tienda
             </h2>
 
             <form onSubmit={hs1(handleStep1)} className="space-y-5" noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Left column */}
                 <div className="space-y-5">
-                  <FormField label="Nombre" error={err1.first_name?.message} required>
+                  <FormField label="Nombre de la tienda" error={err1.name?.message} required>
                     <FormInput
-                      placeholder="Nombre"
-                      error={!!err1.first_name}
-                      {...reg1('first_name')}
+                      placeholder="Ej: Tienda Centro"
+                      error={!!err1.name}
+                      {...reg1('name')}
                     />
                   </FormField>
 
-                  <FormField label="Apellido" error={err1.last_name?.message} required>
-                    <FormInput
-                      placeholder="Apellido"
-                      error={!!err1.last_name}
-                      {...reg1('last_name')}
-                    />
-                  </FormField>
-
-                  <FormField label="Correo electrónico" error={err1.email?.message} required>
-                    <FormInput
-                      type="email"
-                      placeholder="correo@ejemplo.com"
-                      error={!!err1.email}
-                      {...reg1('email')}
-                    />
-                  </FormField>
-                </div>
-
-                {/* Right column */}
-                <div className="space-y-5">
                   <FormField label="Teléfono" error={err1.phone_number?.message}>
                     <div className="flex gap-2">
                       <FormInput
@@ -212,62 +209,20 @@ export default function NuevoUsuarioPage({
                     </div>
                   </FormField>
 
-                  <FormField label="Documento de identidad" error={err1.identity_document?.message}>
+                  <FormField label="Latitud" error={err1.latitude?.message} required>
                     <FormInput
-                      placeholder="DNI / Pasaporte / etc."
-                      {...reg1('identity_document')}
+                      placeholder="Ej: 19.4326"
+                      error={!!err1.latitude}
+                      {...reg1('latitude')}
                     />
                   </FormField>
 
-                  <FormField label="Dirección" error={err1.address?.message}>
+                  <FormField label="Longitud" error={err1.longitude?.message} required>
                     <FormInput
-                      placeholder="Calle, número, colonia"
-                      {...reg1('address')}
+                      placeholder="Ej: -99.1332"
+                      error={!!err1.longitude}
+                      {...reg1('longitude')}
                     />
-                  </FormField>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <SecondaryButton
-                  type="button"
-                  onClick={() => router.push(`/${locale}/usuarios`)}
-                  className="px-8"
-                >
-                  Cancelar
-                </SecondaryButton>
-                <PrimaryButton type="submit" className="px-8">
-                  Siguiente
-                </PrimaryButton>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Step 2 */}
-        {currentStep === 2 && (
-          <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-8">
-            <h2 className="text-[20px] font-semibold text-[#161616] mb-6">
-              Rol y ubicación
-            </h2>
-
-            <form onSubmit={hs2(handleStep2)} className="space-y-5" noValidate>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Left column */}
-                <div className="space-y-5">
-                  <FormField label="Rol" error={err2.role?.message} required>
-                    <select
-                      className="w-full h-[50px] px-4 rounded-[8px] border-2 border-[#D0D5DD] text-[15px] text-[#191919] bg-white focus:border-[#0000FF] focus:outline-none transition-colors"
-                      {...reg2('role')}
-                    >
-                      <option value="">Seleccionar rol</option>
-                      <option value="owner">Propietario</option>
-                      <option value="admin">Administrador</option>
-                      <option value="manager">Gestor</option>
-                      <option value="installer">Instalador</option>
-                      <option value="viewer">Observador</option>
-                      <option value="store_owner">Dueño tienda</option>
-                    </select>
                   </FormField>
                 </div>
 
@@ -286,13 +241,94 @@ export default function NuevoUsuarioPage({
                     }
                     errors={geoErrors}
                   />
+
+                  <FormField label="Dirección exacta" error={err1.address?.message} required>
+                    <FormInput
+                      placeholder="Calle, número, colonia"
+                      error={!!err1.address}
+                      {...reg1('address')}
+                    />
+                  </FormField>
                 </div>
               </div>
 
               <div className="flex gap-3 pt-4">
                 <SecondaryButton
                   type="button"
-                  onClick={() => router.push(`/${locale}/usuarios`)}
+                  onClick={() => router.push(`/${locale}/stores`)}
+                  className="px-8"
+                >
+                  Cancelar
+                </SecondaryButton>
+                <PrimaryButton type="submit" className="px-8">
+                  Siguiente
+                </PrimaryButton>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Step 2 */}
+        {currentStep === 2 && (
+          <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-8">
+            <h2 className="text-[20px] font-semibold text-[#161616] mb-6">
+              Datos del responsable de la tienda
+            </h2>
+
+            <form onSubmit={hs2(handleStep2)} className="space-y-5" noValidate>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Left column */}
+                <div className="space-y-5">
+                  <FormField label="Nombre" error={err2.responsible_first_name?.message} required>
+                    <FormInput
+                      placeholder="Nombre"
+                      error={!!err2.responsible_first_name}
+                      {...reg2('responsible_first_name')}
+                    />
+                  </FormField>
+
+                  <FormField label="Apellido" error={err2.responsible_last_name?.message} required>
+                    <FormInput
+                      placeholder="Apellido"
+                      error={!!err2.responsible_last_name}
+                      {...reg2('responsible_last_name')}
+                    />
+                  </FormField>
+                </div>
+
+                {/* Right column */}
+                <div className="space-y-5">
+                  <FormField label="Teléfono" error={err2.responsible_phone_number?.message}>
+                    <div className="flex gap-2">
+                      <FormInput
+                        placeholder="+1"
+                        className="w-[80px]"
+                        {...reg2('responsible_phone_country_code')}
+                      />
+                      <FormInput
+                        placeholder="Número"
+                        className="flex-1"
+                        type="tel"
+                        {...reg2('responsible_phone_number')}
+                      />
+                    </div>
+                  </FormField>
+
+                  <FormField label="Correo electrónico" error={err2.responsible_email?.message} required>
+                    <FormInput
+                      type="email"
+                      placeholder="correo@ejemplo.com"
+                      error={!!err2.responsible_email}
+                      {...reg2('responsible_email')}
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <SecondaryButton
+                  type="button"
+                  onClick={() => router.push(`/${locale}/stores`)}
                   className="px-8"
                 >
                   Cancelar
@@ -305,7 +341,7 @@ export default function NuevoUsuarioPage({
                   Atrás
                 </SecondaryButton>
                 <PrimaryButton type="submit" disabled={isSubmitting} className="px-8">
-                  {isSubmitting ? 'Creando...' : 'Crear usuario'}
+                  {isSubmitting ? 'Creando...' : 'Crear tienda'}
                 </PrimaryButton>
               </div>
             </form>

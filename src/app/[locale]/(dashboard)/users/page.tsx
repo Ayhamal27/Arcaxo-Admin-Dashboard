@@ -3,6 +3,7 @@
 import { use, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Plus, Search, Pencil, Phone } from 'lucide-react';
 
 import { listUsersAction } from '@/actions/users/list-users';
@@ -22,6 +23,8 @@ export default function UsuariosPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = use(params);
+  const t = useTranslations('users');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -46,17 +49,17 @@ export default function UsuariosPage({
   const totalPages = Math.ceil(total / pagination.pageSize);
 
   return (
-    <div>
-      <Breadcrumb locale={locale} items={[{ label: 'Usuarios' }]} />
+    <div className="flex flex-col flex-1">
+      <Breadcrumb locale={locale} items={[{ label: t('title') }]} />
 
       {/* Action bar: Nueva Usuario + Search */}
       <div className="flex gap-[18px] items-center mb-[44px]">
         <button
-          onClick={() => router.push(`/${locale}/usuarios/nuevo`)}
+          onClick={() => router.push(`/${locale}/users/new`)}
           className="flex gap-[15px] items-center justify-center h-[50px] w-[205px] bg-[#000AFF] border border-[#0000FF] rounded-[10px] text-white text-[16px] font-medium shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#0000CC] transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Nueva Usuario
+          {t('newUserBtn')}
         </button>
 
         <div className="relative h-[50px] w-[445px]">
@@ -65,7 +68,7 @@ export default function UsuariosPage({
           </div>
           <input
             type="text"
-            placeholder="Search"
+            placeholder={tCommon('search')}
             value={filters.search ?? ''}
             onChange={(e) =>
               startTransition(() => setFilters({ search: e.target.value || undefined }))
@@ -79,17 +82,17 @@ export default function UsuariosPage({
       {isLoading ? (
         <TableSkeleton rows={6} columns={7} />
       ) : isError ? (
-        <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-12 text-center">
-          <p className="text-[16px] text-[#FF4163]">Error al cargar usuarios</p>
+        <div className="flex-1 bg-white rounded-[15px] border border-[#E5E5EA] p-12 text-center flex items-center justify-center">
+          <p className="text-[16px] text-[#FF4163]">{t('errorLoading')}</p>
         </div>
       ) : users.length === 0 ? (
-        <div className="bg-white rounded-[15px] border border-[#E5E5EA] px-[20px] py-[25px]">
+        <div className="flex-1 bg-white rounded-[15px] border border-[#E5E5EA] flex items-center justify-center">
           <EmptyState
             icon={<Users className="w-12 h-12" />}
-            title="No hay usuarios registrados"
-            description="Crea el primer usuario para comenzar"
-            actionLabel="Nueva Usuario"
-            onAction={() => router.push(`/${locale}/usuarios/nuevo`)}
+            title={t('noUsers')}
+            description={t('noUsersDesc')}
+            actionLabel={t('newUserBtn')}
+            onAction={() => router.push(`/${locale}/users/new`)}
           />
         </div>
       ) : (
@@ -98,25 +101,25 @@ export default function UsuariosPage({
             <thead>
               <tr>
                 <th className="text-left pl-[21px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[260px]">
-                  Usuario
+                  {t('userColumn')}
                 </th>
                 <th className="text-left pl-[41px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[219px]">
-                  Rol
+                  {t('role')}
                 </th>
                 <th className="text-center px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[141px]">
-                  Dispositivos instalados
+                  {t('devicesInstalled')}
                 </th>
                 <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[141px]">
-                  Tiendas instaladas
+                  {t('storesInstalled')}
                 </th>
                 <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-bold text-[#161616] w-[161px]">
-                  Telefono
+                  {t('phone')}
                 </th>
                 <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[197px]">
-                  Zona
+                  {tCommon('zone')}
                 </th>
                 <th className="text-center p-[10px] text-[18px] font-semibold text-[#161616] w-[198px]">
-                  Acciones
+                  {tCommon('actions')}
                 </th>
               </tr>
             </thead>
@@ -181,13 +184,13 @@ export default function UsuariosPage({
                   <td className="p-[10px]">
                     <div className="flex gap-[20px] items-center justify-center">
                       <Link
-                        href={`/${locale}/usuarios/${user.user_id}`}
+                        href={`/${locale}/users/${user.user_id}`}
                         className="flex items-center justify-center h-[34px] w-[80px] border border-[#0000FF] rounded-[8px] text-[15px] font-medium text-[#0000FF] hover:bg-[#F0F0FF] transition-colors"
                       >
-                        Ampliar
+                        {tCommon('expand')}
                       </Link>
                       <Link
-                        href={`/${locale}/usuarios/${user.user_id}`}
+                        href={`/${locale}/users/${user.user_id}`}
                         className="flex items-center justify-center h-[34px] w-[40px] border border-[#D0D5DD] rounded-[8px] text-[#667085] hover:bg-[#F9F9F9] transition-colors"
                       >
                         <Pencil className="w-4 h-4" />

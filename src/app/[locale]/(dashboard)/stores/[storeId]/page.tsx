@@ -30,7 +30,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
       <Breadcrumb
         locale={locale}
         items={[
-          { label: 'Tiendas', href: `/${locale}/tiendas` },
+          { label: 'Tiendas', href: `/${locale}/stores` },
           { label: store.name },
         ]}
       />
@@ -150,7 +150,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
       {/* Back link */}
       <div className="mt-6">
         <Link
-          href={`/${locale}/tiendas`}
+          href={`/${locale}/stores`}
           className="text-[14px] text-[#0000FF] hover:underline"
         >
           ← Volver a tiendas

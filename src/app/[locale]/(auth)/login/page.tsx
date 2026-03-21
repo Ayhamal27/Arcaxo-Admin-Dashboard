@@ -67,7 +67,8 @@ export default function LoginPage({
         });
       }
 
-      router.push(`/${locale}/tiendas`);
+      localStorage.setItem('locale', locale);
+      router.push(`/${locale}/stores`);
     } catch (err) {
       setGeneralError(err instanceof Error ? err.message : 'Error inesperado');
       setIsLoading(false);

@@ -28,15 +28,15 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { key: 'dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { key: 'reports', href: '/informes', icon: FileText },
-  { key: 'aerial', href: '/vista-aerea', icon: Map },
-  { key: 'stores', href: '/tiendas', icon: Store },
-  { key: 'devices', href: '/dispositivos', icon: Cpu },
-  { key: 'users', href: '/usuarios', icon: Users },
+  { key: 'reports', href: '/reports', icon: FileText },
+  { key: 'aerial', href: '/aerial', icon: Map },
+  { key: 'stores', href: '/stores', icon: Store },
+  { key: 'devices', href: '/devices', icon: Cpu },
+  { key: 'users', href: '/users', icon: Users },
 ];
 
 const bottomNavItems: NavItem[] = [
-  { key: 'settings', href: '/configuracion', icon: Settings },
+  { key: 'settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar({ locale, open = true, onClose }: SidebarProps) {

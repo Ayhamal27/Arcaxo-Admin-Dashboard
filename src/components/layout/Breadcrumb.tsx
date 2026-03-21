@@ -18,7 +18,7 @@ export function Breadcrumb({ locale, items }: BreadcrumbProps) {
     <nav className="flex items-center gap-2 mb-5" aria-label="Breadcrumb">
       {/* Logo mini */}
       <Link
-        href={`/${locale}/tiendas`}
+        href={`/${locale}/stores`}
         className="text-[15px] font-semibold text-[#0000FF] hover:opacity-80 transition-opacity tracking-tight"
       >
         Arcaxo

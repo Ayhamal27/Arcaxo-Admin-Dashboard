@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Menu, X, LogOut, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Bell, Menu, X, LogOut, User, ChevronDown, Check } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { logoutAction } from '@/actions/auth/logout';
@@ -12,6 +12,69 @@ interface NavbarProps {
   locale: string;
   onMenuToggle?: () => void;
   sidebarOpen?: boolean;
+}
+
+const LOCALES = [
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'en', label: 'English', flag: '🇺🇸' },
+];
+
+function LocaleDropdown({ locale }: { locale: string }) {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0];
+
+  const switchLocale = (targetLocale: string) => {
+    setOpen(false);
+    if (targetLocale === locale) return;
+
+    // Persist preference so the root / loader can read it
+    localStorage.setItem('locale', targetLocale);
+
+    // Strip any existing locale prefix (handles both /es/... and /en/... cases)
+    const strippedPath = pathname.replace(/^\/(es|en)(\/|$)/, '/').replace(/\/$/, '') || '/';
+    const newPath = `/${targetLocale}${strippedPath}`;
+
+    // Hard navigation so the server fully reloads next-intl messages for the new locale
+    window.location.href = newPath;
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 h-[34px] px-2.5 rounded-[8px] border border-[#E5E5EA] bg-white hover:bg-[#F5F5F5] transition-colors text-[#191919] focus:outline-none"
+        aria-label="Change language"
+      >
+        <span className="text-[18px] leading-none">{current.flag}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-[#667085] transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-[calc(100%+6px)] w-[148px] bg-white rounded-[10px] shadow-[0px_4px_16px_rgba(0,0,0,0.12)] border border-[#E5E5EA] z-50 overflow-hidden">
+            {LOCALES.map((l) => (
+              <button
+                key={l.code}
+                onClick={() => switchLocale(l.code)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-[14px] text-[#191919] hover:bg-[#F5F5FF] transition-colors"
+              >
+                <span className="text-[18px] leading-none">{l.flag}</span>
+                <span className="flex-1 text-left">{l.label}</span>
+                {l.code === locale && (
+                  <Check className="w-3.5 h-3.5 text-[#0000FF]" />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
@@ -43,15 +106,18 @@ export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
 
-        <Link href={`/${locale}/tiendas`} className="flex items-center">
+        <Link href={`/${locale}/stores`} className="flex items-center">
           <span className="text-[22px] font-semibold text-[#191919] tracking-tight leading-none">
             Arcaxo
           </span>
         </Link>
       </div>
 
-      {/* Right: bell + avatar */}
-      <div className="flex items-center gap-4">
+      {/* Right: locale switcher + bell + avatar */}
+      <div className="flex items-center gap-3">
+        {/* Language switcher */}
+        <LocaleDropdown locale={locale} />
+
         {/* Bell */}
         <button className="relative text-[#667085] hover:text-[#191919] transition-colors p-1">
           <Bell className="w-6 h-6" />

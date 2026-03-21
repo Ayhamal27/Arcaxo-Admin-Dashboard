@@ -20,7 +20,7 @@ export async function proxy(request: NextRequest) {
   } else if (pathname.includes('/login')) {
     const authenticated = await checkAuthInProxy(request);
     if (authenticated) {
-      return NextResponse.redirect(new URL(`/${locale}/tiendas`, request.url));
+      return NextResponse.redirect(new URL(`/${locale}/stores`, request.url));
     }
   }
 

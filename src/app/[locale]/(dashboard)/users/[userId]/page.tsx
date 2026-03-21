@@ -47,7 +47,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
       <Breadcrumb
         locale={locale}
         items={[
-          { label: 'Usuarios', href: `/${locale}/usuarios` },
+          { label: 'Usuarios', href: `/${locale}/users` },
           { label: `${user.first_name} ${user.last_name}` },
         ]}
       />
@@ -210,7 +210,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
 
       {/* Back link */}
       <div className="mt-4">
-        <Link href={`/${locale}/usuarios`} className="text-[14px] text-[#0000FF] hover:underline">
+        <Link href={`/${locale}/users`} className="text-[14px] text-[#0000FF] hover:underline">
           ← Volver a usuarios
         </Link>
       </div>

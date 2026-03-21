@@ -79,7 +79,7 @@ export function UserActionsClient({
       }
 
       toast.success('Usuario eliminado');
-      router.push(`/${locale}/usuarios`);
+      router.push(`/${locale}/users`);
     } finally {
       setIsLoading(false);
     }
