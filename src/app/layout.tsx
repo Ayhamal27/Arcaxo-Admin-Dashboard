@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const poppins = Poppins({
@@ -23,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${poppins.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </QueryProvider>
       </body>
     </html>
   );

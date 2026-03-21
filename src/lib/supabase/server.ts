@@ -46,9 +46,14 @@ export async function createServerAuthClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch (error) {
+            // In some server contexts cookies are read-only
+            console.warn('[Supabase SSR] Could not set cookies:', error);
+          }
         },
       },
     }

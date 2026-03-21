@@ -1,7 +1,6 @@
 'use server';
 
 import { createServerAuthClient } from '@/lib/supabase/server';
-import { callRpc } from '@/lib/supabase/rpc';
 import { UserAccessGateResult } from '@/types/profiles';
 import { z } from 'zod';
 
@@ -33,13 +32,28 @@ export async function loginAction(formData: unknown): Promise<LoginResponse> {
     });
 
     if (authError || !authData.user) {
-      return { success: false, error: 'Invalid email or password' };
+      console.error('[Login Auth Error]', authError?.message, authError?.status, authError);
+      return { success: false, error: authError?.message || 'Invalid email or password' };
     }
 
-    const accessGateResult: UserAccessGateResult = await callRpc('rpc_user_access_gate', {
-      p_required_scope: 'web_panel',
-      p_target_user_id: authData.user.id,
-    });
+    // Use the authenticated client (not service_role) because this RPC
+    // requires auth.uid() context from the signed-in user.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: accessGateData, error: accessGateError } = await (supabase as any).rpc(
+      'rpc_user_access_gate',
+      {
+        p_required_scope: 'web_panel',
+        p_target_user_id: authData.user.id,
+      }
+    );
+
+    if (accessGateError) {
+      console.error('[Login Access Gate Error]', accessGateError);
+      await supabase.auth.signOut();
+      return { success: false, error: 'Failed to verify access permissions' };
+    }
+
+    const accessGateResult = accessGateData as unknown as UserAccessGateResult;
 
     if (!accessGateResult.can_access) {
       await supabase.auth.signOut();
