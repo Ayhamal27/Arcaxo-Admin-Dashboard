@@ -67,7 +67,9 @@
     "devices": "Devices",
     "users": "Users",
     "settings": "Settings",
-    "profile": "My Profile"
+    "profile": "My Profile",
+    "hidePanel": "Collapse menu",
+    "showPanel": "Expand menu"
   },
   "stores": {
     "title": "Stores",

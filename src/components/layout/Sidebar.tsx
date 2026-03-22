@@ -11,8 +11,11 @@ import {
   Cpu,
   Users,
   Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useSidebarStore } from '@/lib/stores/sidebar-store';
 
 interface SidebarProps {
   locale: string;
@@ -42,6 +45,7 @@ const bottomNavItems: NavItem[] = [
 export function Sidebar({ locale, open = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const { collapsed, toggleCollapsed } = useSidebarStore();
 
   const isActive = (href: string) => {
     const fullPath = `/${locale}${href}`;
@@ -71,57 +75,81 @@ export function Sidebar({ locale, open = true, onClose }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-[80px] bottom-0 w-[317px] bg-white border-r border-[#E2DFDF] z-40',
-          'flex flex-col overflow-y-auto transition-transform duration-300',
+          'fixed left-0 top-[80px] bottom-0 bg-white border-r border-[#E2DFDF] z-40',
+          'flex flex-col overflow-y-auto transition-all duration-300',
           'lg:translate-x-0',
-          open ? 'translate-x-0' : '-translate-x-full'
+          open ? 'translate-x-0' : '-translate-x-full',
+          collapsed ? 'w-[72px]' : 'w-[317px]'
         )}
       >
         {/* Main nav */}
         <nav className="flex-1 pt-6 pb-4">
           <ul className="space-y-1">
             {mainNavItems.map((item) => (
-              <NavItem
+              <NavLink
                 key={item.key}
                 item={item}
                 locale={locale}
                 active={isActive(item.href)}
                 label={labels[item.key] ?? item.key}
+                collapsed={collapsed}
                 onNavigate={onClose}
               />
             ))}
           </ul>
         </nav>
 
-        {/* Spacer + bottom nav */}
+        {/* Bottom nav + collapse toggle */}
         <div className="pb-6 border-t border-[#F0F0F0] pt-4">
           <ul className="space-y-1">
             {bottomNavItems.map((item) => (
-              <NavItem
+              <NavLink
                 key={item.key}
                 item={item}
                 locale={locale}
                 active={isActive(item.href)}
                 label={labels[item.key] ?? item.key}
+                collapsed={collapsed}
                 onNavigate={onClose}
               />
             ))}
           </ul>
+
+          {/* Collapse / Expand toggle */}
+          <button
+            onClick={toggleCollapsed}
+            className={cn(
+              'flex items-center w-full py-2.5 relative transition-colors mt-1',
+              'text-[15px] leading-tight text-[#191919] font-normal hover:bg-[#F5F5FF]',
+              collapsed ? 'justify-center px-0' : 'gap-[25px] px-6'
+            )}
+            title={collapsed ? t('showPanel') : t('hidePanel')}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="w-5 h-5 flex-shrink-0 text-[#82A2C2]" />
+            ) : (
+              <>
+                <PanelLeftClose className="w-5 h-5 flex-shrink-0 text-[#82A2C2]" />
+                <span>{t('hidePanel')}</span>
+              </>
+            )}
+          </button>
         </div>
       </aside>
     </>
   );
 }
 
-interface NavItemProps {
+interface NavLinkProps {
   item: NavItem;
   locale: string;
   active: boolean;
   label: string;
+  collapsed: boolean;
   onNavigate?: () => void;
 }
 
-function NavItem({ item, locale, active, label, onNavigate }: NavItemProps) {
+function NavLink({ item, locale, active, label, collapsed, onNavigate }: NavLinkProps) {
   const Icon = item.icon;
 
   return (
@@ -129,9 +157,11 @@ function NavItem({ item, locale, active, label, onNavigate }: NavItemProps) {
       <Link
         href={`/${locale}${item.href}`}
         onClick={onNavigate}
+        title={collapsed ? label : undefined}
         className={cn(
-          'flex items-center gap-[25px] px-6 py-2.5 relative transition-colors',
+          'flex items-center py-2.5 relative transition-colors',
           'text-[15px] leading-tight',
+          collapsed ? 'justify-center px-0' : 'gap-[25px] px-6',
           active
             ? 'text-[#0000FF] font-semibold before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[7px] before:bg-[#0000FF] before:rounded-r-[4px]'
             : 'text-[#191919] font-normal hover:bg-[#F5F5FF]'
@@ -140,7 +170,7 @@ function NavItem({ item, locale, active, label, onNavigate }: NavItemProps) {
         <Icon
           className={cn('w-5 h-5 flex-shrink-0', active ? 'text-[#0000FF]' : 'text-[#82A2C2]')}
         />
-        <span>{label}</span>
+        {!collapsed && <span>{label}</span>}
       </Link>
     </li>
   );

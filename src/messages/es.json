@@ -67,7 +67,9 @@
     "devices": "Dispositivos",
     "users": "Usuarios",
     "settings": "Configuración",
-    "profile": "Mi perfil"
+    "profile": "Mi perfil",
+    "hidePanel": "Colapsar menú",
+    "showPanel": "Ampliar menú"
   },
   "stores": {
     "title": "Tiendas",
