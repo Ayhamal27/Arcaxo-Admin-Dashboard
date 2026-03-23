@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getStoreDetailAction } from '@/actions/stores/get-store';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { StatusDot } from '@/components/shared/DataTable';
-import { MapPin, Phone, Users, Cpu, Calendar } from 'lucide-react';
+import { MapPin, Phone, Users, Cpu, Calendar, Pencil } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -147,11 +147,18 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
       {/* Tabs: sessions + devices */}
       <StoreTabsClient storeId={storeId} locale={locale} />
 
-      {/* Back link */}
-      <div className="mt-6">
+      {/* Actions */}
+      <div className="mt-6 flex items-center gap-3">
+        <Link
+          href={`/${locale}/stores/${storeId}/edit`}
+          className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors"
+        >
+          <Pencil className="w-4 h-4" />
+          Editar
+        </Link>
         <Link
           href={`/${locale}/stores`}
-          className="text-[14px] text-[#0000FF] hover:underline"
+          className="text-[14px] text-[#0000FF] hover:underline ml-2"
         >
           ← Volver a tiendas
         </Link>

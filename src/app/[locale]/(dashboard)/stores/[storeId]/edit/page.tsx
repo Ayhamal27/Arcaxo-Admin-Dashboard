@@ -6,19 +6,22 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, Loader2, Copy, Check, X } from 'lucide-react';
+import { MapPin, ChevronDown, Loader2 } from 'lucide-react';
 import {
   getCountries,
   getCountryCallingCode,
   isValidPhoneNumber as libIsValid,
   type CountryCode,
 } from 'libphonenumber-js';
-import { createUserAction, CreateUserResult } from '@/actions/users/create-user';
+import { getStoreDetailAction } from '@/actions/stores/get-store';
+import { updateStoreAction } from '@/actions/stores/update-store';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { listCountriesAction, CountryOption } from '@/actions/geography/list-countries';
 import { listStatesAction, StateOption } from '@/actions/geography/list-states';
 import { listCitiesAction, CityOption } from '@/actions/geography/list-cities';
 import { useTranslations } from 'next-intl';
+import { RpcAdminGetStoreDetailOutput } from '@/types/rpc-outputs';
+import { StoreResponsible } from '@/types/entities';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -38,23 +41,34 @@ const PHONE_COUNTRIES = getCountries()
   }))
   .sort((a, b) => a.iso.localeCompare(b.iso));
 
+/** Reverse-map a dial code like "+58" to an ISO country code like "VE" */
+function dialCodeToIso(dialCode?: string | null): string {
+  if (!dialCode) return '';
+  const match = PHONE_COUNTRIES.find((c) => c.dialCode === dialCode);
+  return match?.iso ?? '';
+}
+
+function extractCoordsFromGoogleMapsUrl(url: string): {
+  lat: number;
+  lng: number;
+} | null {
+  const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+  const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+  return null;
+}
+
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 const Step1Schema = z
   .object({
-    first_name: z.string().min(1, 'Nombre requerido').max(50),
-    last_name: z.string().min(1, 'Apellido requerido').max(50),
-    identity_document: z.string().optional(),
+    name: z.string().min(2, 'Mínimo 2 caracteres').max(100),
     phoneCountry: z.string().optional(),
     phoneNumber: z.string().optional(),
-    email: z
-      .string()
-      .min(1, 'Correo requerido')
-      .email('Formato de correo inválido')
-      .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
-    address: z.string().optional(),
+    google_maps_url: z.string().min(5, 'Dirección requerida'),
   })
   .refine(
     (data) => {
@@ -62,16 +76,34 @@ const Step1Schema = z
       if (!data.phoneCountry) return false;
       return libIsValid(data.phoneNumber, data.phoneCountry as CountryCode);
     },
-    { message: 'Número inválido para el país seleccionado', path: ['phoneNumber'] }
+    { message: 'Número de teléfono inválido para el país seleccionado', path: ['phoneNumber'] }
   );
 
 type Step1FormData = z.infer<typeof Step1Schema>;
 
-const Step2Schema = z.object({
-  role: z.enum(['owner', 'admin', 'manager', 'viewer', 'store_owner', 'installer'], {
-    error: 'Rol requerido',
-  }),
-});
+const Step2Schema = z
+  .object({
+    responsible_first_name: z.string().min(1, 'Nombre requerido'),
+    responsible_last_name: z.string().min(1, 'Apellido requerido'),
+    responsible_email: z
+      .string()
+      .min(1, 'Correo requerido')
+      .email('Formato de correo inválido')
+      .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
+    respPhoneCountry: z.string().optional(),
+    respPhoneNumber: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.respPhoneNumber) return true;
+      if (!data.respPhoneCountry) return false;
+      return libIsValid(data.respPhoneNumber, data.respPhoneCountry as CountryCode);
+    },
+    {
+      message: 'Número de teléfono inválido para el país seleccionado',
+      path: ['respPhoneNumber'],
+    }
+  );
 
 type Step2FormData = z.infer<typeof Step2Schema>;
 
@@ -80,14 +112,19 @@ type Step2FormData = z.infer<typeof Step2Schema>;
 function FigmaInput({
   placeholder,
   error,
+  icon,
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { error?: boolean }) {
+}: React.InputHTMLAttributes<HTMLInputElement> & {
+  error?: boolean;
+  icon?: React.ReactNode;
+}) {
   return (
     <div
-      className={`flex items-center w-full h-[52px] bg-[#F0F0F3] rounded-[8px] px-[16px] ${
+      className={`flex items-center gap-[10px] w-full h-[52px] bg-[#F0F0F3] rounded-[8px] px-[16px] ${
         error ? 'ring-1 ring-[#FF4163]' : ''
       }`}
     >
+      {icon}
       <input
         className="flex-1 bg-transparent text-[18px] text-[#1D1D1D] placeholder:text-[#838383] outline-none h-full"
         placeholder={placeholder}
@@ -222,104 +259,6 @@ function FigmaStepProgress({
   );
 }
 
-// ─── Credentials Modal ──────────────────────────────────────────────────────
-
-function CredentialsModal({
-  email,
-  password,
-  onClose,
-}: {
-  email: string;
-  password: string;
-  onClose: () => void;
-}) {
-  const [copiedField, setCopiedField] = useState<'email' | 'password' | 'all' | null>(null);
-
-  const copyToClipboard = async (text: string, field: 'email' | 'password' | 'all') => {
-    await navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const copyAll = () => {
-    copyToClipboard(`Email: ${email}\nContraseña: ${password}`, 'all');
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[18px] font-semibold text-[#191919]">Credenciales del usuario</h3>
-          <button onClick={onClose}>
-            <X className="w-5 h-5 text-[#667085]" />
-          </button>
-        </div>
-
-        <div className="p-3 bg-[#E6F9F1] rounded-[8px] mb-5">
-          <p className="text-[13px] text-[#228D70] font-medium">
-            Usuario creado exitosamente. Copia las credenciales para compartirlas con el usuario.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 mb-5">
-          <div>
-            <p className="text-[13px] text-[#667085] mb-1">Email</p>
-            <div className="flex items-center gap-2 bg-[#F5F5F5] rounded-[8px] px-3 py-2.5">
-              <span className="flex-1 text-[14px] font-mono text-[#191919] break-all">
-                {email}
-              </span>
-              <button
-                onClick={() => copyToClipboard(email, 'email')}
-                className="flex-shrink-0 p-1 hover:bg-[#E5E5EA] rounded transition-colors"
-              >
-                {copiedField === 'email' ? (
-                  <Check className="w-4 h-4 text-[#228D70]" />
-                ) : (
-                  <Copy className="w-4 h-4 text-[#667085]" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[13px] text-[#667085] mb-1">Contraseña</p>
-            <div className="flex items-center gap-2 bg-[#F5F5F5] rounded-[8px] px-3 py-2.5">
-              <span className="flex-1 text-[14px] font-mono text-[#191919] break-all">
-                {password}
-              </span>
-              <button
-                onClick={() => copyToClipboard(password, 'password')}
-                className="flex-shrink-0 p-1 hover:bg-[#E5E5EA] rounded transition-colors"
-              >
-                {copiedField === 'password' ? (
-                  <Check className="w-4 h-4 text-[#228D70]" />
-                ) : (
-                  <Copy className="w-4 h-4 text-[#667085]" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <button
-            onClick={copyAll}
-            className="flex-1 h-[44px] text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors"
-          >
-            {copiedField === 'all' ? 'Copiado!' : 'Copiar todo'}
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] transition-colors"
-          >
-            Continuar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 interface GeoData {
@@ -328,14 +267,14 @@ interface GeoData {
   cityId?: number;
 }
 
-export default function NuevoUsuarioPage({
+export default function EditarTiendaPage({
   params,
 }: {
-  params: Promise<{ locale: string }>;
+  params: Promise<{ locale: string; storeId: string }>;
 }) {
-  const { locale } = use(params);
+  const { locale, storeId } = use(params);
   const router = useRouter();
-  const t = useTranslations('users');
+  const t = useTranslations('stores');
   const tCommon = useTranslations('common');
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -345,7 +284,8 @@ export default function NuevoUsuarioPage({
     {}
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [credentials, setCredentials] = useState<CreateUserResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [store, setStore] = useState<RpcAdminGetStoreDetailOutput | null>(null);
 
   // Geography data
   const [countries, setCountries] = useState<CountryOption[]>([]);
@@ -354,13 +294,91 @@ export default function NuevoUsuarioPage({
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
+  const [geoInitialized, setGeoInitialized] = useState(false);
 
+  // Step 1 form
+  const {
+    register: reg1,
+    handleSubmit: hs1,
+    setValue: sv1,
+    watch: w1,
+    reset: reset1,
+    formState: { errors: err1 },
+  } = useForm<Step1FormData>({
+    resolver: zodResolver(Step1Schema),
+    defaultValues: { phoneCountry: '', phoneNumber: '' },
+  });
+
+  const phoneCountry1 = w1('phoneCountry');
+  const phoneNumber1 = w1('phoneNumber');
+
+  // Step 2 form
+  const {
+    register: reg2,
+    handleSubmit: hs2,
+    setValue: sv2,
+    watch: w2,
+    reset: reset2,
+    formState: { errors: err2 },
+  } = useForm<Step2FormData>({
+    resolver: zodResolver(Step2Schema),
+    defaultValues: { respPhoneCountry: '', respPhoneNumber: '' },
+  });
+
+  const respPhoneCountry = w2('respPhoneCountry');
+  const respPhoneNumber = w2('respPhoneNumber');
+
+  // ─── Load store data + countries ────────────────────────────────────────────
   useEffect(() => {
-    listCountriesAction()
-      .then(setCountries)
-      .finally(() => setLoadingCountries(false));
-  }, []);
+    Promise.all([getStoreDetailAction(storeId), listCountriesAction()])
+      .then(([storeData, countriesData]) => {
+        setStore(storeData);
+        setCountries(countriesData);
 
+        // Pre-fill step 1
+        const storePhoneIso = dialCodeToIso(storeData.phone_country_code);
+        reset1({
+          name: storeData.name,
+          phoneCountry: storePhoneIso,
+          phoneNumber: storeData.phone_number ?? '',
+          google_maps_url: storeData.google_maps_url || storeData.address || '',
+        });
+
+        // Pre-fill step 2 from responsible
+        const resp = storeData.responsible as StoreResponsible | null;
+        if (resp) {
+          const respPhoneIso = dialCodeToIso(resp.phone_country_code);
+          reset2({
+            responsible_first_name: resp.first_name ?? '',
+            responsible_last_name: resp.last_name ?? '',
+            responsible_email: resp.email ?? '',
+            respPhoneCountry: respPhoneIso,
+            respPhoneNumber: resp.phone_number ?? '',
+          });
+        }
+
+        // Pre-fill geography: find country_id from country_code
+        const countryMatch = countriesData.find(
+          (c) => c.country_code === storeData.country_code
+        );
+        if (countryMatch) {
+          setGeoData({
+            countryId: countryMatch.country_id,
+            stateId: storeData.state_id,
+            cityId: storeData.city_id,
+          });
+        }
+
+        setLoadingCountries(false);
+        setLoading(false);
+      })
+      .catch(() => {
+        toast.error('Error al cargar los datos de la tienda');
+        router.push(`/${locale}/stores`);
+      });
+  }, [storeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Load states when country changes ──────────────────────────────────────
   useEffect(() => {
     if (!geoData.countryId) {
       setStates([]);
@@ -368,14 +386,26 @@ export default function NuevoUsuarioPage({
       return;
     }
     setLoadingStates(true);
-    setStates([]);
-    setCities([]);
     listStatesAction(geoData.countryId)
-      .then(setStates)
+      .then((data) => {
+        setStates(data);
+        // On initial load, also fetch cities for the pre-selected state
+        if (!geoInitialized && geoData.stateId && geoData.countryId) {
+          setLoadingCities(true);
+          listCitiesAction(geoData.countryId, geoData.stateId)
+            .then(setCities)
+            .finally(() => {
+              setLoadingCities(false);
+              setGeoInitialized(true);
+            });
+        }
+      })
       .finally(() => setLoadingStates(false));
-  }, [geoData.countryId]);
+  }, [geoData.countryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Load cities when state changes (after init) ──────────────────────────
   useEffect(() => {
+    if (!geoInitialized) return;
     if (!geoData.countryId || !geoData.stateId) {
       setCities([]);
       return;
@@ -385,38 +415,11 @@ export default function NuevoUsuarioPage({
     listCitiesAction(geoData.countryId, geoData.stateId)
       .then(setCities)
       .finally(() => setLoadingCities(false));
-  }, [geoData.countryId, geoData.stateId]);
+  }, [geoData.stateId, geoInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Step 1 form
-  const {
-    register: reg1,
-    handleSubmit: hs1,
-    setValue: sv1,
-    watch: w1,
-    formState: { errors: err1 },
-  } = useForm<Step1FormData>({
-    resolver: zodResolver(Step1Schema),
-    defaultValues: { phoneCountry: 'VE', phoneNumber: '' },
-  });
-
-  const phoneCountry = w1('phoneCountry');
-  const phoneNumber = w1('phoneNumber');
-
-  // Step 2 form
-  const {
-    register: reg2,
-    handleSubmit: hs2,
-    formState: { errors: err2 },
-  } = useForm<Step2FormData>({ resolver: zodResolver(Step2Schema) });
+  // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleStep1 = (data: Step1FormData) => {
-    setStep1Data(data);
-    setCurrentStep(2);
-  };
-
-  const handleStep2 = async (data: Step2FormData) => {
-    if (!step1Data) return;
-
     const newGeoErrors: typeof geoErrors = {};
     if (!geoData.countryId) newGeoErrors.country = 'País requerido';
     if (!geoData.stateId) newGeoErrors.state = 'Estado requerido';
@@ -428,47 +431,85 @@ export default function NuevoUsuarioPage({
     }
 
     setGeoErrors({});
+    setStep1Data(data);
+    setCurrentStep(2);
+  };
+
+  const handleStep2 = async (data: Step2FormData) => {
+    if (!step1Data || !geoData.cityId) return;
+
     setIsSubmitting(true);
 
-    // Build phone dial code
-    const dialCode = step1Data.phoneCountry
+    const coords = extractCoordsFromGoogleMapsUrl(step1Data.google_maps_url);
+
+    // Build phone dial codes from ISO
+    const storeDialCode = step1Data.phoneCountry
       ? `+${getCountryCallingCode(step1Data.phoneCountry as CountryCode)}`
+      : null;
+    const respDialCode = data.respPhoneCountry
+      ? `+${getCountryCallingCode(data.respPhoneCountry as CountryCode)}`
       : null;
 
     try {
-      const result = await createUserAction({
-        first_name: step1Data.first_name,
-        last_name: step1Data.last_name,
-        email: step1Data.email,
-        phone_country_code: step1Data.phoneNumber ? dialCode : null,
+      const result = await updateStoreAction({
+        store_id: storeId,
+        name: step1Data.name,
+        city_id: geoData.cityId,
+        address: step1Data.google_maps_url,
+        latitude: coords?.lat ?? 0,
+        longitude: coords?.lng ?? 0,
+        phone_country_code: step1Data.phoneNumber ? storeDialCode : null,
         phone_number: step1Data.phoneNumber || null,
-        identity_document: step1Data.identity_document || null,
-        address: step1Data.address || null,
-        role: data.role,
-        city_id: geoData.cityId!,
+        responsible_first_name: data.responsible_first_name,
+        responsible_last_name: data.responsible_last_name,
+        responsible_email: data.responsible_email,
+        responsible_phone_country_code: data.respPhoneNumber ? respDialCode : null,
+        responsible_phone_number: data.respPhoneNumber || null,
       });
 
       if (!result.success) {
-        toast.error(result.error ?? 'Error al crear el usuario');
+        toast.error(result.error ?? 'Error al actualizar la tienda');
         setIsSubmitting(false);
         return;
       }
 
-      setCredentials(result);
-      setIsSubmitting(false);
+      toast.success('Tienda actualizada exitosamente');
+      router.push(`/${locale}/stores/${storeId}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error inesperado');
       setIsSubmitting(false);
     }
   };
 
+  // ─── Loading state ─────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex flex-col flex-1">
+        <Breadcrumb
+          locale={locale}
+          items={[
+            { label: t('title'), href: `/${locale}/stores` },
+            { label: '...' },
+          ]}
+        />
+        <div className="bg-white border border-[#DDE2E5] rounded-[20px] px-[45px] py-[30px] flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-[#0000FF]" />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col flex-1">
       <Breadcrumb
         locale={locale}
         items={[
-          { label: t('title'), href: `/${locale}/users` },
-          { label: 'Crear nuevo usuario' },
+          { label: t('title'), href: `/${locale}/stores` },
+          { label: store?.name ?? '' },
+          { label: 'Editar' },
         ]}
       />
 
@@ -476,7 +517,7 @@ export default function NuevoUsuarioPage({
       <div className="bg-white border border-[#DDE2E5] rounded-[20px] px-[45px] py-[30px] flex flex-col">
         <FigmaStepProgress currentStep={currentStep} totalSteps={2} />
 
-        {/* Step 1: Datos generales del usuario */}
+        {/* Step 1 */}
         {currentStep === 1 && (
           <form
             onSubmit={hs1(handleStep1)}
@@ -484,48 +525,27 @@ export default function NuevoUsuarioPage({
             className="flex flex-col flex-1 mt-[24px]"
           >
             <h2 className="text-[20px] font-semibold text-[#1D1D1D] mb-[16px]">
-              Datos generales del usuario
+              Datos generales de la tienda
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-[44px] gap-y-[24px]">
-              {/* Left column: Nombre, Apellido, Cedula */}
+              {/* Left column */}
               <div className="flex flex-col gap-[16px]">
                 <div>
-                  <FigmaLabel>Nombre</FigmaLabel>
+                  <FigmaLabel>Nombre de la tienda</FigmaLabel>
                   <FigmaInput
-                    placeholder="Nombre"
-                    error={!!err1.first_name}
-                    {...reg1('first_name')}
+                    placeholder="Nombre de la tienda"
+                    error={!!err1.name}
+                    {...reg1('name')}
                   />
-                  <FieldError message={err1.first_name?.message} />
+                  <FieldError message={err1.name?.message} />
                 </div>
 
-                <div>
-                  <FigmaLabel>Apellido</FigmaLabel>
-                  <FigmaInput
-                    placeholder="Apellido"
-                    error={!!err1.last_name}
-                    {...reg1('last_name')}
-                  />
-                  <FieldError message={err1.last_name?.message} />
-                </div>
-
-                <div>
-                  <FigmaLabel>Cedula de identidad</FigmaLabel>
-                  <FigmaInput
-                    placeholder="Ingrese la cedula"
-                    {...reg1('identity_document')}
-                  />
-                </div>
-              </div>
-
-              {/* Right column: Telefono, Correo, Direccion */}
-              <div className="flex flex-col gap-[16px]">
                 <div>
                   <FigmaLabel>Numero Telefonico</FigmaLabel>
                   <PhoneField
-                    countryValue={phoneCountry ?? ''}
-                    numberValue={phoneNumber ?? ''}
+                    countryValue={phoneCountry1 ?? ''}
+                    numberValue={phoneNumber1 ?? ''}
                     onCountryChange={(iso) => sv1('phoneCountry', iso, { shouldValidate: true })}
                     onNumberChange={(num) => sv1('phoneNumber', num, { shouldValidate: true })}
                     error={!!err1.phoneNumber}
@@ -534,72 +554,19 @@ export default function NuevoUsuarioPage({
                 </div>
 
                 <div>
-                  <FigmaLabel>Correo Electronico</FigmaLabel>
+                  <FigmaLabel>Direccion exacta con google maps</FigmaLabel>
                   <FigmaInput
-                    type="email"
-                    placeholder="Correo Electronico"
-                    error={!!err1.email}
-                    {...reg1('email')}
+                    placeholder="Introduce el enlace de google maps"
+                    icon={<MapPin className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />}
+                    error={!!err1.google_maps_url}
+                    {...reg1('google_maps_url')}
                   />
-                  <FieldError message={err1.email?.message} />
-                </div>
-
-                <div>
-                  <FigmaLabel>Direccion</FigmaLabel>
-                  <FigmaInput
-                    placeholder="Ingrese direccion del usuario"
-                    {...reg1('address')}
-                  />
+                  <FieldError message={err1.google_maps_url?.message} />
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-end gap-[25px] mt-auto pt-[24px]">
-              <button
-                type="button"
-                onClick={() => router.push(`/${locale}/users`)}
-                className="h-[50px] w-[205px] border border-[#0000FF] rounded-[12px] text-[20px] font-semibold text-[#0000FF] hover:bg-[#F0F0FF] transition-colors cursor-pointer"
-              >
-                {tCommon('cancel')}
-              </button>
-              <button
-                type="submit"
-                className="h-[50px] w-[205px] bg-[#0000FF] rounded-[12px] text-[20px] font-semibold text-white hover:bg-[#0000CC] transition-colors cursor-pointer"
-              >
-                {tCommon('next')}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Step 2: Rol y zona */}
-        {currentStep === 2 && (
-          <form
-            onSubmit={hs2(handleStep2)}
-            noValidate
-            className="flex flex-col flex-1 mt-[24px]"
-          >
-            <h2 className="text-[20px] font-semibold text-[#1D1D1D] mb-[16px]">
-              Rol de usuario y asignacion de zona
-            </h2>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-[44px] gap-y-[24px]">
-              {/* Left column: Rol, Pais */}
+              {/* Right column */}
               <div className="flex flex-col gap-[16px]">
-                <div>
-                  <FigmaLabel>Rol</FigmaLabel>
-                  <FigmaSelect error={!!err2.role} {...reg2('role')}>
-                    <option value="">Selecciona el rol del usuario</option>
-                    <option value="owner">{t('roles.owner')}</option>
-                    <option value="admin">{t('roles.admin')}</option>
-                    <option value="manager">{t('roles.manager')}</option>
-                    <option value="installer">{t('roles.installer')}</option>
-                    <option value="viewer">{t('roles.viewer')}</option>
-                    <option value="store_owner">{t('roles.store_owner')}</option>
-                  </FigmaSelect>
-                  <FieldError message={err2.role?.message} />
-                </div>
-
                 <div>
                   <FigmaLabel>Pais</FigmaLabel>
                   <FigmaSelect
@@ -624,26 +591,24 @@ export default function NuevoUsuarioPage({
                   </FigmaSelect>
                   <FieldError message={geoErrors.country} />
                 </div>
-              </div>
 
-              {/* Right column: Estado, Ciudad */}
-              <div className="flex flex-col gap-[16px]">
                 <div>
                   <FigmaLabel>Estado</FigmaLabel>
                   <FigmaSelect
                     value={geoData.stateId ?? ''}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setGeoInitialized(true);
                       setGeoData((prev) => ({
                         ...prev,
                         stateId: Number(e.target.value) || undefined,
                         cityId: undefined,
-                      }))
-                    }
+                      }));
+                    }}
                     disabled={loadingStates || !geoData.countryId}
                     loading={loadingStates}
                     error={!!geoErrors.state}
                   >
-                    <option value="">Selecciona el estado</option>
+                    <option value="">Selecciona el Estado</option>
                     {states.map((s) => (
                       <option key={s.state_id} value={s.state_id}>
                         {s.state_name}
@@ -682,7 +647,91 @@ export default function NuevoUsuarioPage({
             <div className="flex justify-end gap-[25px] mt-auto pt-[24px]">
               <button
                 type="button"
-                onClick={() => router.push(`/${locale}/users`)}
+                onClick={() => router.push(`/${locale}/stores/${storeId}`)}
+                className="h-[50px] w-[205px] border border-[#0000FF] rounded-[12px] text-[20px] font-semibold text-[#0000FF] hover:bg-[#F0F0FF] transition-colors cursor-pointer"
+              >
+                {tCommon('cancel')}
+              </button>
+              <button
+                type="submit"
+                className="h-[50px] w-[205px] bg-[#0000FF] rounded-[12px] text-[20px] font-semibold text-white hover:bg-[#0000CC] transition-colors cursor-pointer"
+              >
+                {tCommon('next')}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Step 2 */}
+        {currentStep === 2 && (
+          <form
+            onSubmit={hs2(handleStep2)}
+            noValidate
+            className="flex flex-col flex-1 mt-[24px]"
+          >
+            <h2 className="text-[20px] font-semibold text-[#1D1D1D] mb-[16px]">
+              Datos generales del Responsable de la tienda
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-[44px] gap-y-[24px]">
+              {/* Left column */}
+              <div className="flex flex-col gap-[16px]">
+                <div>
+                  <FigmaLabel>Nombre</FigmaLabel>
+                  <FigmaInput
+                    placeholder="Nombre del responsable de la tienda"
+                    error={!!err2.responsible_first_name}
+                    {...reg2('responsible_first_name')}
+                  />
+                  <FieldError message={err2.responsible_first_name?.message} />
+                </div>
+
+                <div>
+                  <FigmaLabel>Apellido</FigmaLabel>
+                  <FigmaInput
+                    placeholder="Apellido del responsable de la tienda"
+                    error={!!err2.responsible_last_name}
+                    {...reg2('responsible_last_name')}
+                  />
+                  <FieldError message={err2.responsible_last_name?.message} />
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="flex flex-col gap-[16px]">
+                <div>
+                  <FigmaLabel>Numero Telefonico</FigmaLabel>
+                  <PhoneField
+                    countryValue={respPhoneCountry ?? ''}
+                    numberValue={respPhoneNumber ?? ''}
+                    onCountryChange={(iso) =>
+                      sv2('respPhoneCountry', iso, { shouldValidate: true })
+                    }
+                    onNumberChange={(num) =>
+                      sv2('respPhoneNumber', num, { shouldValidate: true })
+                    }
+                    error={!!err2.respPhoneNumber}
+                  />
+                  <FieldError message={err2.respPhoneNumber?.message} />
+                </div>
+
+                <div>
+                  <FigmaLabel>Correo Electronico</FigmaLabel>
+                  <FigmaInput
+                    type="email"
+                    placeholder="Correo Electronico"
+                    error={!!err2.responsible_email}
+                    {...reg2('responsible_email')}
+                  />
+                  <FieldError message={err2.responsible_email?.message} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-[25px] mt-auto pt-[24px]">
+              <button
+                type="button"
+                onClick={() => router.push(`/${locale}/stores/${storeId}`)}
                 className="h-[50px] w-[205px] border border-[#0000FF] rounded-[12px] text-[20px] font-semibold text-[#0000FF] hover:bg-[#F0F0FF] transition-colors cursor-pointer"
               >
                 {tCommon('cancel')}
@@ -692,26 +741,12 @@ export default function NuevoUsuarioPage({
                 disabled={isSubmitting}
                 className="h-[50px] w-[205px] bg-[#0000FF] rounded-[12px] text-[20px] font-semibold text-white hover:bg-[#0000CC] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? tCommon('loading') : 'Crear usuario'}
+                {isSubmitting ? tCommon('loading') : 'Guardar cambios'}
               </button>
             </div>
           </form>
         )}
       </div>
-
-      {credentials?.email && credentials?.temp_password && (
-        <CredentialsModal
-          email={credentials.email}
-          password={credentials.temp_password}
-          onClose={() =>
-            router.push(
-              credentials.user_id
-                ? `/${locale}/users/${credentials.user_id}`
-                : `/${locale}/users`
-            )
-          }
-        />
-      )}
     </div>
   );
 }

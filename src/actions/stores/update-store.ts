@@ -1,6 +1,6 @@
 'use server';
 
-import { rpcAdminUpdateStore } from '@/lib/supabase/rpc';
+import { rpcAdminUpdateStore, rpcStoreInstallationContextUpdate } from '@/lib/supabase/rpc';
 import { z } from 'zod';
 
 const UpdateStoreSchema = z.object({
@@ -13,6 +13,14 @@ const UpdateStoreSchema = z.object({
   authorized_devices_count: z.number().int().nonnegative().optional(),
   status: z.enum(['pending', 'active', 'inactive', 'suspended']).optional(),
   client_group: z.string().optional(),
+  // Context fields (phone, responsible)
+  phone_country_code: z.string().optional().nullable(),
+  phone_number: z.string().optional().nullable(),
+  responsible_first_name: z.string().optional().nullable(),
+  responsible_last_name: z.string().optional().nullable(),
+  responsible_email: z.string().email().optional().nullable(),
+  responsible_phone_country_code: z.string().optional().nullable(),
+  responsible_phone_number: z.string().optional().nullable(),
 });
 
 export type UpdateStoreInput = z.infer<typeof UpdateStoreSchema>;
@@ -26,6 +34,8 @@ export interface UpdateStoreResult {
 export async function updateStoreAction(input: unknown): Promise<UpdateStoreResult> {
   try {
     const data = UpdateStoreSchema.parse(input);
+
+    // 1) Update core store fields via rpc_admin_update_store
     const result = await rpcAdminUpdateStore({
       p_store_id: data.store_id,
       p_name: data.name ?? null,
@@ -40,6 +50,34 @@ export async function updateStoreAction(input: unknown): Promise<UpdateStoreResu
 
     if (result.error || result.result === false) {
       return { success: false, error: result.error ?? 'Error al actualizar la tienda' };
+    }
+
+    // 2) Update context fields (phone, responsible) via rpc_store_installation_context_update
+    const hasContextFields =
+      data.phone_country_code !== undefined ||
+      data.phone_number !== undefined ||
+      data.responsible_first_name !== undefined ||
+      data.responsible_last_name !== undefined ||
+      data.responsible_email !== undefined ||
+      data.responsible_phone_country_code !== undefined ||
+      data.responsible_phone_number !== undefined;
+
+    if (hasContextFields) {
+      const ctxResult = await rpcStoreInstallationContextUpdate({
+        p_store_id: data.store_id,
+        p_phone_country_code: data.phone_country_code ?? null,
+        p_phone_number: data.phone_number ?? null,
+        p_responsible_first_name: data.responsible_first_name ?? null,
+        p_responsible_last_name: data.responsible_last_name ?? null,
+        p_responsible_email: data.responsible_email ?? null,
+      });
+
+      if (ctxResult.error || ctxResult.result === false) {
+        return {
+          success: false,
+          error: ctxResult.error ?? 'Error al actualizar datos de contacto',
+        };
+      }
     }
 
     return { success: true, store_id: result.store_id };

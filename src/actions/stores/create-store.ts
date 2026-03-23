@@ -3,6 +3,8 @@
 import { rpcCreateStore } from '@/lib/supabase/rpc';
 import { z } from 'zod';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 const CreateStoreSchema = z.object({
   name: z.string().min(2, 'Nombre debe tener al menos 2 caracteres').max(100),
   city_id: z.number().min(1, 'Ciudad es requerida'),
@@ -13,7 +15,11 @@ const CreateStoreSchema = z.object({
   phone_number: z.string().optional().nullable(),
   responsible_first_name: z.string().min(1, 'Nombre del responsable es requerido'),
   responsible_last_name: z.string().min(1, 'Apellido del responsable es requerido'),
-  responsible_email: z.string().email('Email del responsable inválido'),
+  responsible_email: z
+    .string()
+    .min(1, 'Correo del responsable requerido')
+    .email('Formato de correo inválido')
+    .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
   responsible_phone_country_code: z.string().optional().nullable(),
   responsible_phone_number: z.string().optional().nullable(),
   authorized_devices_count: z.number().optional().default(0),

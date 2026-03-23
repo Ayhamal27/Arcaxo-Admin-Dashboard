@@ -288,7 +288,7 @@ export default function UsuariosPage({
                         {tCommon('expand')}
                       </Link>
                       <Link
-                        href={`/${locale}/users/${user.user_id}`}
+                        href={`/${locale}/users/${user.user_id}/edit`}
                         className="flex items-center justify-center h-[34px] w-[38px] border border-[#D0D5DD] rounded-[8px] text-[#667085] hover:bg-[#F9F9F9] transition-colors shrink-0"
                       >
                         <Pencil className="w-4 h-4" />

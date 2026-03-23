@@ -26,7 +26,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <QueryProvider>
             {children}
-            <Toaster position="top-right" richColors />
+            <Toaster position="top-right" richColors duration={60000} closeButton />
           </QueryProvider>
       </body>
     </html>

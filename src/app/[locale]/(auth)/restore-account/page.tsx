@@ -14,8 +14,14 @@ import { SecondaryButton } from '@/components/auth/secondary-button';
 import { ErrorMessage } from '@/components/auth/error-message';
 import { SuccessMessage } from '@/components/auth/success-message';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 const RestoreSchema = z.object({
-  email: z.string().email('Correo inválido'),
+  email: z
+    .string()
+    .min(1, 'Correo requerido')
+    .email('Formato de correo inválido')
+    .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
 });
 
 type RestoreFormData = z.infer<typeof RestoreSchema>;

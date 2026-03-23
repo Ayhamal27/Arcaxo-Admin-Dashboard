@@ -1,6 +1,6 @@
 'use server';
 
-import { getServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { rpcUpsertUserProfile } from '@/lib/supabase/rpc';
 import { ProfileRole, ProfileStatus } from '@/types/database';
 import { z } from 'zod';
@@ -14,10 +14,16 @@ const AGENT_SCOPE_BY_ROLE: Record<ProfileRole, string> = {
   [ProfileRole.VIEWER]: 'assigned_stores',
 };
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 const CreateUserSchema = z.object({
   first_name: z.string().min(1, 'Nombre requerido').max(50).trim(),
   last_name: z.string().min(1, 'Apellido requerido').max(50).trim(),
-  email: z.string().email('Email inválido'),
+  email: z
+    .string()
+    .min(1, 'Correo requerido')
+    .email('Formato de correo inválido')
+    .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
   phone_country_code: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
   identity_document: z.string().optional().nullable(),
@@ -32,38 +38,66 @@ export interface CreateUserResult {
   success: boolean;
   user_id?: string;
   email?: string;
+  temp_password?: string;
   error?: string;
 }
 
-export async function createUserAction(input: unknown): Promise<CreateUserResult> {
-  const client = getServerClient();
-  let authUserId: string | undefined;
+/**
+ * Create a standalone anon client (no cookies) for auth.signUp
+ * so it doesn't interfere with the current admin session.
+ */
+function createAnonClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+}
 
+export async function createUserAction(input: unknown): Promise<CreateUserResult> {
   try {
     const data = CreateUserSchema.parse(input);
 
     // Generate a temporary password
     const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
 
-    // Step 1: Create auth user
-    const { data: authData, error: authError } = await client.auth.admin.createUser({
+    // Step 1: Create auth user via signUp (anon client, no session side-effects)
+    const anonClient = createAnonClient();
+    const { data: authData, error: authError } = await anonClient.auth.signUp({
       email: data.email,
       password: tempPassword,
-      email_confirm: true,
-      user_metadata: { first_name: data.first_name, last_name: data.last_name },
+      options: {
+        data: { first_name: data.first_name, last_name: data.last_name },
+      },
     });
 
     if (authError || !authData.user) {
       const msg = authError?.message ?? 'Error al crear usuario en Auth';
-      if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
+
+      // Email delivery errors are non-blocking — the user was still created
+      const isEmailError =
+        msg.toLowerCase().includes('email') &&
+        (msg.toLowerCase().includes('send') ||
+          msg.toLowerCase().includes('deliver') ||
+          msg.toLowerCase().includes('smtp'));
+
+      if (
+        !isEmailError &&
+        (msg.toLowerCase().includes('already registered') ||
+          msg.toLowerCase().includes('already exists'))
+      ) {
         return { success: false, error: 'Este correo ya está registrado' };
       }
-      return { success: false, error: msg };
+
+      // If it's an email error but we have the user, continue
+      if (!isEmailError || !authData?.user) {
+        return { success: false, error: msg };
+      }
     }
 
-    authUserId = authData.user.id;
+    const authUserId = authData.user.id;
 
-    // Step 2: Create profile via RPC
+    // Step 2: Create profile via RPC (uses session-based anon client)
     const role = data.role as ProfileRole;
     const result = await rpcUpsertUserProfile({
       p_user_id: authUserId,
@@ -80,18 +114,11 @@ export async function createUserAction(input: unknown): Promise<CreateUserResult
     });
 
     if (result.error) {
-      // Rollback auth user
-      await client.auth.admin.deleteUser(authUserId).catch(() => {});
       return { success: false, error: result.error };
     }
 
-    return { success: true, user_id: authUserId, email: data.email };
+    return { success: true, user_id: authUserId, email: data.email, temp_password: tempPassword };
   } catch (error) {
-    // Rollback if auth user was created but profile failed
-    if (authUserId) {
-      await client.auth.admin.deleteUser(authUserId).catch(() => {});
-    }
-
     if (error instanceof z.ZodError) {
       return { success: false, error: error.issues[0]?.message ?? 'Datos inválidos' };
     }

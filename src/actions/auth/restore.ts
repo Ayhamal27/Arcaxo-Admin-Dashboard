@@ -3,8 +3,14 @@
 import { createServerAuthClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 const RequestResetSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Invalid email format')
+    .refine((v) => EMAIL_REGEX.test(v), 'Enter a valid email (e.g. user@domain.com)'),
   locale: z.enum(['es', 'en']).default('es'),
 });
 

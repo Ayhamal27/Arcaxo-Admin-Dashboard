@@ -7,15 +7,15 @@ import { RpcUpsertUserProfileOutput } from '@/types/rpc-outputs';
 
 const UpdateUserSchema = z.object({
   user_id: z.string().uuid(),
-  first_name: z.string().min(1).max(100).optional(),
-  last_name: z.string().min(1).max(100).optional(),
-  role: z.enum(['owner', 'admin', 'manager', 'installer', 'viewer', 'store_owner']).optional(),
-  status: z.enum(['active', 'inactive', 'suspended']).optional(),
+  first_name: z.string().min(1).max(100),
+  last_name: z.string().min(1).max(100),
+  role: z.enum(['owner', 'admin', 'manager', 'installer', 'viewer', 'store_owner']),
+  status: z.enum(['active', 'inactive', 'suspended']),
   phone_country_code: z.string().optional().nullable(),
   phone_number: z.string().optional().nullable(),
   identity_document: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
-  city_id: z.number().int().positive().optional(),
+  city_id: z.number().int().positive(),
 });
 
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
@@ -39,25 +39,19 @@ export async function updateUserAction(input: unknown): Promise<UpdateUserResult
   try {
     const data = UpdateUserSchema.parse(input);
 
-    // Build only the fields that are provided
-    const params: Record<string, unknown> = {
+    const result = await callRpc<RpcUpsertUserProfileOutput>('rpc_upsert_user_profile', {
       p_user_id: data.user_id,
-    };
-
-    if (data.first_name !== undefined) params.p_first_name = data.first_name;
-    if (data.last_name !== undefined) params.p_last_name = data.last_name;
-    if (data.role !== undefined) {
-      params.p_role = data.role;
-      params.p_agent_scope = AGENT_SCOPE_BY_ROLE[data.role as ProfileRole] ?? 'assigned_stores';
-    }
-    if (data.status !== undefined) params.p_status = data.status;
-    if (data.city_id !== undefined) params.p_city_id = data.city_id;
-    if (data.phone_country_code !== undefined) params.p_phone_country_code = data.phone_country_code;
-    if (data.phone_number !== undefined) params.p_phone_number = data.phone_number;
-    if (data.identity_document !== undefined) params.p_identity_document = data.identity_document;
-    if (data.address !== undefined) params.p_address = data.address;
-
-    const result = await callRpc<RpcUpsertUserProfileOutput>('rpc_upsert_user_profile', params);
+      p_first_name: data.first_name,
+      p_last_name: data.last_name,
+      p_role: data.role,
+      p_status: data.status,
+      p_city_id: data.city_id,
+      p_agent_scope: AGENT_SCOPE_BY_ROLE[data.role as ProfileRole] ?? 'assigned_stores',
+      p_phone_country_code: data.phone_country_code ?? null,
+      p_phone_number: data.phone_number ?? null,
+      p_identity_document: data.identity_document ?? null,
+      p_address: data.address ?? null,
+    });
 
     if (result.error || result.result === false) {
       return { success: false, error: result.error ?? 'Error al actualizar usuario' };

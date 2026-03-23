@@ -16,8 +16,14 @@ import { ErrorMessage } from '@/components/auth/error-message';
 import { ProfileRole, ProfileStatus } from '@/types/database';
 import Link from 'next/link';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 const LoginSchema = z.object({
-  email: z.string().email('Correo inválido'),
+  email: z
+    .string()
+    .min(1, 'Correo requerido')
+    .email('Formato de correo inválido')
+    .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 

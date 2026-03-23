@@ -32,6 +32,7 @@ import type {
   RpcStoreMaintenanceCloseInput,
   RpcSensorUnlinkInput,
   RpcGetNearbyInstallersInput,
+  RpcStoreInstallationContextUpdateInput,
 } from '@/types/rpc-inputs';
 import type {
   RpcAdminListStoresOutputItem,
@@ -65,6 +66,7 @@ import type {
   RpcStoreMaintenanceCloseOutput,
   RpcSensorUnlinkOutput,
   RpcGetNearbyInstallersOutputItem,
+  RpcStoreInstallationContextUpdateOutput,
 } from '@/types/rpc-outputs';
 
 /**
@@ -127,6 +129,12 @@ export const rpcAdminUpdateStore = (p: RpcAdminUpdateStoreInput) =>
 export const rpcAdminToggleStoreActive = (p: RpcAdminToggleStoreActiveInput) =>
   callRpc<RpcAdminToggleStoreActiveOutput>(
     'rpc_admin_toggle_store_active',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcStoreInstallationContextUpdate = (p: RpcStoreInstallationContextUpdateInput) =>
+  callRpc<RpcStoreInstallationContextUpdateOutput>(
+    'rpc_store_installation_context_update',
     p as unknown as Record<string, unknown>
   );
 
