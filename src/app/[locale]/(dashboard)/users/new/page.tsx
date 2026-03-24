@@ -13,7 +13,6 @@ import {
   isValidPhoneNumber as libIsValid,
   type CountryCode,
 } from 'libphonenumber-js';
-import { createUserAction, CreateUserResult } from '@/actions/users/create-user';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { listCountriesAction, CountryOption } from '@/actions/geography/list-countries';
 import { listStatesAction, StateOption } from '@/actions/geography/list-states';
@@ -74,6 +73,37 @@ const Step2Schema = z.object({
 });
 
 type Step2FormData = z.infer<typeof Step2Schema>;
+
+interface CreatedCredentials {
+  userId: string;
+  email: string;
+  password: string;
+}
+
+interface CreateUserApiSuccess {
+  ok: true;
+  data: {
+    user_id: string;
+    email: string;
+    profile: {
+      role: string;
+      status: string;
+      city_id: number;
+    };
+  };
+}
+
+interface CreateUserApiError {
+  ok: false;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+}
+
+function generateTemporaryPassword() {
+  return Math.random().toString(36).slice(-8) + 'A1!';
+}
 
 // ─── Figma-style UI components ──────────────────────────────────────────────
 
@@ -235,10 +265,42 @@ function CredentialsModal({
 }) {
   const [copiedField, setCopiedField] = useState<'email' | 'password' | 'all' | null>(null);
 
+  const copyWithFallback = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', 'true');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return copied;
+  };
+
   const copyToClipboard = async (text: string, field: 'email' | 'password' | 'all') => {
-    await navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+    try {
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof window !== 'undefined' &&
+        window.isSecureContext &&
+        navigator.clipboard?.writeText
+      ) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const copied = copyWithFallback(text);
+        if (!copied) {
+          throw new Error('copy_failed');
+        }
+      }
+
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      toast.error('No se pudo copiar automáticamente. Copia manualmente el texto.');
+    }
   };
 
   const copyAll = () => {
@@ -345,7 +407,7 @@ export default function NuevoUsuarioPage({
     {}
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [credentials, setCredentials] = useState<CreateUserResult | null>(null);
+  const [credentials, setCredentials] = useState<CreatedCredentials | null>(null);
 
   // Geography data
   const [countries, setCountries] = useState<CountryOption[]>([]);
@@ -434,30 +496,56 @@ export default function NuevoUsuarioPage({
     const dialCode = step1Data.phoneCountry
       ? `+${getCountryCallingCode(step1Data.phoneCountry as CountryCode)}`
       : null;
+    const tempPassword = generateTemporaryPassword();
 
     try {
-      const result = await createUserAction({
+      const payload = {
         first_name: step1Data.first_name,
         last_name: step1Data.last_name,
         email: step1Data.email,
+        password: tempPassword,
+        send_invite: false,
         phone_country_code: step1Data.phoneNumber ? dialCode : null,
         phone_number: step1Data.phoneNumber || null,
         identity_document: step1Data.identity_document || null,
         address: step1Data.address || null,
         role: data.role,
+        status: 'active' as const,
         city_id: geoData.cityId!,
+      };
+
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      if (!result.success) {
-        toast.error(result.error ?? 'Error al crear el usuario');
-        setIsSubmitting(false);
+      let responseJson: CreateUserApiSuccess | CreateUserApiError | null = null;
+      try {
+        responseJson = (await response.json()) as CreateUserApiSuccess | CreateUserApiError;
+      } catch {
+        responseJson = null;
+      }
+
+      if (!response.ok) {
+        const message = responseJson && !responseJson.ok ? responseJson.error?.message : null;
+        toast.error(message ?? 'Error al crear el usuario');
         return;
       }
 
-      setCredentials(result);
-      setIsSubmitting(false);
+      if (!responseJson || !responseJson.ok) {
+        toast.error('Respuesta inválida del servidor');
+        return;
+      }
+
+      setCredentials({
+        userId: responseJson.data.user_id,
+        email: responseJson.data.email,
+        password: tempPassword,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error inesperado');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -699,14 +787,14 @@ export default function NuevoUsuarioPage({
         )}
       </div>
 
-      {credentials?.email && credentials?.temp_password && (
+      {credentials?.email && credentials?.password && (
         <CredentialsModal
           email={credentials.email}
-          password={credentials.temp_password}
+          password={credentials.password}
           onClose={() =>
             router.push(
-              credentials.user_id
-                ? `/${locale}/users/${credentials.user_id}`
+              credentials.userId
+                ? `/${locale}/users/${credentials.userId}`
                 : `/${locale}/users`
             )
           }

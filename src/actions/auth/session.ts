@@ -18,13 +18,13 @@ export interface CurrentUserResponse {
 export async function getCurrentUserAction(): Promise<CurrentUserResponse> {
   try {
     const supabase = await createServerAuthClient();
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getUser();
 
-    if (error || !data.session) {
+    if (error || !data.user) {
       return { success: false, error: 'No active session' };
     }
 
-    const user = data.session.user;
+    const user = data.user;
 
     return {
       success: true,
@@ -42,8 +42,8 @@ export async function getCurrentUserAction(): Promise<CurrentUserResponse> {
 export async function isAuthenticatedAction(): Promise<boolean> {
   try {
     const supabase = await createServerAuthClient();
-    const { data } = await supabase.auth.getSession();
-    return !!data.session;
+    const { data, error } = await supabase.auth.getUser();
+    return !error && !!data.user;
   } catch {
     return false;
   }

@@ -97,7 +97,7 @@ export async function createUserAction(input: unknown): Promise<CreateUserResult
 
     const authUserId = authData.user.id;
 
-    // Step 2: Create profile via RPC (uses session-based anon client)
+    // Step 2: Create profile via RPC (uses current admin session context)
     const role = data.role as ProfileRole;
     const result = await rpcUpsertUserProfile({
       p_user_id: authUserId,

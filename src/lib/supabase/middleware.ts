@@ -1,8 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export const updateSession = async (request: NextRequest) => {
-  let response = NextResponse.next({
+export interface UpdateSessionResult {
+  response: NextResponse;
+  authenticated: boolean;
+}
+
+export const updateSession = async (request: NextRequest): Promise<UpdateSessionResult> => {
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -25,8 +30,11 @@ export const updateSession = async (request: NextRequest) => {
     }
   );
 
-  // Refresh session (actualiza tokens si están cerca de expirar)
-  await supabase.auth.getSession();
+  // Validar usuario real y refrescar tokens/cookies cuando sea necesario.
+  const { data, error } = await supabase.auth.getUser();
 
-  return response;
+  return {
+    response,
+    authenticated: !error && !!data.user,
+  };
 };
