@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { TooltipHint } from '@/components/shared/TooltipHint';
 import { listStoreSessionsAction } from '@/actions/stores/list-store-sessions';
 import { listStoreDevicesAction } from '@/actions/stores/list-store-devices';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
@@ -80,7 +81,12 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Estado</th>
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Instalador</th>
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Apertura</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Dispositivos</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">
+                    <span className="flex items-center gap-1">
+                      Dispositivos
+                      <TooltipHint text="Instalados al abrir / Total requeridos" />
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

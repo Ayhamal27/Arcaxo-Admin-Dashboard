@@ -89,19 +89,35 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
         <div className="lg:sticky lg:top-[104px] lg:h-[calc(100vh-128px)] flex flex-col gap-5 min-h-0 flex-1">
           {/* Store info + stats card (unified) */}
           <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden flex-1 flex flex-col">
-            {/* Facade photo — 20vh banner */}
-            {facadeDisplayUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={facadeDisplayUrl}
-                alt={store.name}
-                className="object-cover w-full h-[20vh]"
-              />
-            ) : (
-              <div className="w-full h-[20vh] bg-[#F0F0F5] flex items-center justify-center">
-                <span className="text-[#D0D5DD] text-[48px]">🏪</span>
-              </div>
-            )}
+            {/* Facade photo — 24vh banner */}
+            <div className="relative w-full flex flex-col justify-end" style={{ height: '24vh' }}>
+              {facadeDisplayUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={facadeDisplayUrl}
+                  alt={store.name}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-[#F0F0F5] flex items-center justify-center">
+                  <span className="text-[#D0D5DD] text-[48px]">🏪</span>
+                </div>
+              )}
+              {store.open_session_id && (
+                <div className="relative z-10 flex justify-end" style={{ paddingRight: '16px', paddingBottom: '16px' }}>
+                  <div className="px-3 py-2.5 bg-[#FFF9E6] border border-[#FADC45] rounded-[8px] text-right">
+                    <p className="text-[12px] font-medium text-[#8B7200]">
+                      Sesión abierta: {store.open_session_type}
+                    </p>
+                    {store.open_session_installer_name && (
+                      <p className="text-[11px] text-[#8B7200]">
+                        Instalador: {store.open_session_installer_name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="px-5 pt-4 pb-5 flex flex-col flex-1">
               <div className="flex items-center gap-2.5 mb-2">
@@ -177,21 +193,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               </div>
             </div>
 
-              {/* Open session banner */}
-              {store.open_session_id && (
-                <div className="mb-4 px-3 py-2.5 bg-[#FFF9E6] border border-[#FADC45] rounded-[8px]">
-                  <p className="text-[12px] font-medium text-[#8B7200]">
-                    Sesión abierta: {store.open_session_type}
-                  </p>
-                  {store.open_session_installer_name && (
-                    <p className="text-[11px] text-[#8B7200]">
-                      Instalador: {store.open_session_installer_name}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Action buttons: WiFi, Devices, Facade — pushed to bottom */}
+{/* Action buttons: WiFi, Devices, Facade — pushed to bottom */}
               <div className="mt-auto pt-2">
                 <StoreDetailClient
                   storeId={storeId}
