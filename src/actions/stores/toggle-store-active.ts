@@ -1,6 +1,6 @@
 'use server';
 
-import { rpcAdminToggleStoreActive } from '@/lib/supabase/rpc';
+import { rpcAdminGetStoreDetail, rpcAdminToggleStoreActive } from '@/lib/supabase/rpc';
 import { StoreToggleAction } from '@/types/database';
 
 export interface ToggleStoreActiveInput {
@@ -21,6 +21,25 @@ export async function toggleStoreActiveAction(
   input: ToggleStoreActiveInput
 ): Promise<ToggleStoreActiveResult> {
   try {
+    const storeDetailResult = await rpcAdminGetStoreDetail({
+      p_store_id: input.storeId,
+    });
+    const store = Array.isArray(storeDetailResult) ? storeDetailResult[0] : storeDetailResult;
+
+    if (store?.open_session_id) {
+      const sessionType =
+        store.open_session_type === 'install'
+          ? 'instalación'
+          : store.open_session_type === 'maintenance'
+          ? 'mantenimiento'
+          : 'activa';
+
+      return {
+        success: false,
+        error: `No se puede cambiar el estado de la tienda mientras exista una sesión de ${sessionType} abierta. Cierra o cancela la sesión primero.`,
+      };
+    }
+
     const result = await rpcAdminToggleStoreActive({
       p_store_id: input.storeId,
       p_active: input.active,

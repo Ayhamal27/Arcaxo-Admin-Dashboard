@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { toggleStoreActiveAction } from '@/actions/stores/toggle-store-active';
@@ -14,6 +15,21 @@ import { Wifi, Cpu, Camera, X, Upload, Pencil, Eye, EyeOff } from 'lucide-react'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const LG_BREAKPOINT = 1024;
+
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(`(min-width: ${LG_BREAKPOINT}px)`).matches;
+  });
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${LG_BREAKPOINT}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
 
 interface StoreDetailClientProps {
   storeId: string;
@@ -34,6 +50,8 @@ export function StoreDetailClient({
 }: StoreDetailClientProps) {
   const router = useRouter();
   const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
+  const isDesktop = useIsDesktop();
+  const overlayLeft = isDesktop ? (sidebarCollapsed ? 72 : 317) : 0;
 
   // Modal states
   const [showWifiModal, setShowWifiModal] = useState(false);
@@ -226,7 +244,7 @@ export function StoreDetailClient({
   return (
     <>
       {/* Action buttons */}
-      <div className="space-y-3">
+      <div className="space-y-3 pb-4">
         {/* WiFi */}
         <button
           onClick={handleOpenWifiModal}
@@ -269,11 +287,12 @@ export function StoreDetailClient({
       </div>
 
       {/* WiFi Modal */}
-      {showWifiModal && (
-        <div className={`fixed top-0 bottom-0 right-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-[left] duration-300 left-0 ${
-          sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[317px]'
-        }`}>
-          <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
+      {showWifiModal && createPortal(
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          style={{ left: overlayLeft, padding: 16 }}
+        >
+          <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">Credenciales WiFi</h3>
               <button onClick={handleCloseWifiModal} className="cursor-pointer">
@@ -387,15 +406,17 @@ export function StoreDetailClient({
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Devices Modal */}
-      {showDevicesModal && (
-        <div className={`fixed top-0 bottom-0 right-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-[left] duration-300 left-0 ${
-          sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[317px]'
-        }`}>
-          <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
+      {showDevicesModal && createPortal(
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          style={{ left: overlayLeft, padding: 16 }}
+        >
+          <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">Contrato de dispositivos</h3>
               <button onClick={() => setShowDevicesModal(false)} className="cursor-pointer">
@@ -435,18 +456,19 @@ export function StoreDetailClient({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Facade Modal — Drag & Drop (offset left to sidebar edge on lg+) */}
-      {showFacadeModal && (
+      {/* Facade Modal — Drag & Drop (portal to body, inline styles for Safari compat) */}
+      {showFacadeModal && createPortal(
         <div
-          className={`fixed top-0 bottom-0 right-0 bg-black/40 flex items-center justify-center z-50 p-4 lg:p-6 transition-[left] duration-300 left-0 ${
-            sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[317px]'
-          }`}
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          style={{ left: overlayLeft, padding: 24 }}
         >
           <div
-            className="bg-white rounded-[15px] p-6 flex flex-col w-full max-w-3xl max-h-[85vh]"
+            className="bg-white rounded-[15px] p-6 flex flex-col"
+            style={{ maxWidth: 768, width: '100%', height: '85vh', maxHeight: 700 }}
           >
             {/* Header — fixed */}
             <div className="flex items-center justify-between mb-3 flex-shrink-0">
@@ -535,7 +557,8 @@ export function StoreDetailClient({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
@@ -557,19 +580,36 @@ export function StoreToggle({
   storeId,
   initialActive,
   installedDevicesCount,
+  hasOpenSession,
+  openSessionType,
 }: {
   storeId: string;
   initialActive: boolean;
   installedDevicesCount: number;
+  hasOpenSession: boolean;
+  openSessionType: string | null;
 }) {
   const [active, setActive] = useState(initialActive);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [installerMessage, setInstallerMessage] = useState('');
+  const [understoodCheckbox, setUnderstoodCheckbox] = useState(false);
   const router = useRouter();
+  const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
 
-  const handleToggle = async () => {
-    const newActive = !active;
+  const hasDevices = installedDevicesCount > 0;
+  const blockingSessionType =
+    openSessionType === 'install'
+      ? 'instalación'
+      : openSessionType === 'maintenance'
+      ? 'mantenimiento'
+      : 'activa';
+  const blockedByOpenSessionMessage = hasOpenSession
+    ? `No puedes activar ni desactivar la tienda mientras exista una sesión de ${blockingSessionType} abierta.`
+    : null;
+
+  const executeToggle = async (newActive: boolean) => {
     setIsLoading(true);
-
     try {
       const result = await toggleStoreActiveAction({
         storeId,
@@ -610,23 +650,123 @@ export function StoreToggle({
     }
   };
 
+  const handleToggle = () => {
+    if (hasOpenSession) {
+      toast.error(blockedByOpenSessionMessage ?? 'Existe una sesión abierta en esta tienda');
+      return;
+    }
+
+    if (active) {
+      setInstallerMessage('');
+      setUnderstoodCheckbox(false);
+      setShowDeactivateModal(true);
+      return;
+    }
+    executeToggle(true);
+  };
+
+  const handleConfirmDeactivate = async () => {
+    setShowDeactivateModal(false);
+    await executeToggle(false);
+  };
+
+  const canConfirm = !hasDevices || (installerMessage.trim().length > 0 && understoodCheckbox);
+
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-[13px] text-[#667085]">{active ? 'Activa' : 'Inactiva'}</span>
-      <button
-        onClick={handleToggle}
-        disabled={isLoading}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
-          active ? 'bg-[#228D70]' : 'bg-[#D0D5DD]'
-        }`}
-        aria-label={active ? 'Desactivar tienda' : 'Activar tienda'}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-            active ? 'translate-x-6' : 'translate-x-1'
+    <>
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] text-[#667085]">{active ? 'Activa' : 'Inactiva'}</span>
+        <button
+          onClick={handleToggle}
+          disabled={isLoading || hasOpenSession}
+          title={blockedByOpenSessionMessage ?? undefined}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+            active ? 'bg-[#228D70]' : 'bg-[#D0D5DD]'
           }`}
-        />
-      </button>
-    </div>
+          aria-label={active ? 'Desactivar tienda' : 'Activar tienda'}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+              active ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+
+      {showDeactivateModal && (
+        <div
+          className={`fixed top-0 bottom-0 right-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-[left] duration-300 left-0 ${
+            sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[317px]'
+          }`}
+        >
+          <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[18px] font-semibold text-[#191919]">
+                {hasDevices ? 'Iniciar cierre de tienda' : 'Desactivar tienda'}
+              </h3>
+              <button
+                onClick={() => setShowDeactivateModal(false)}
+                className="cursor-pointer"
+              >
+                <X className="w-5 h-5 text-[#667085]" />
+              </button>
+            </div>
+
+            {hasDevices ? (
+              <>
+                <p className="text-[14px] text-[#667085] mb-5">
+                  Esta tienda tiene <strong className="text-[#191919]">{installedDevicesCount}</strong> dispositivo(s) instalado(s). Se creará una solicitud de mantenimiento para que el instalador retire los equipos. El cierre definitivo ocurrirá cuando complete el mantenimiento.
+                </p>
+
+                <div className="mb-4">
+                  <label className="block text-[13px] text-[#667085] mb-1">
+                    Mensaje para el instalador <span className="text-[#DC2626]">*</span>
+                  </label>
+                  <textarea
+                    value={installerMessage}
+                    onChange={(e) => setInstallerMessage(e.target.value)}
+                    placeholder="Describe la acción que debe llevar a cabo el instalador..."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-[8px] border border-[#D0D5DD] text-[14px] text-[#191919] focus:border-[#DC2626] focus:outline-none resize-none"
+                  />
+                </div>
+
+                <label className="flex items-start gap-3 mb-5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={understoodCheckbox}
+                    onChange={(e) => setUnderstoodCheckbox(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 flex-shrink-0 accent-[#DC2626]"
+                  />
+                  <span className="text-[13px] text-[#667085]">
+                    Entiendo que el número de dispositivos autorizados se llevará a 0 al confirmar el cierre definitivo, y que este ocurre cuando el instalador retire los dispositivos.
+                  </span>
+                </label>
+              </>
+            ) : (
+              <p className="text-[14px] text-[#667085] mb-5">
+                Esta tienda ya no será visible para los instaladores en la app de instaladores. ¿Deseas continuar?
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmDeactivate}
+                disabled={isLoading || !canConfirm}
+                className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                {isLoading ? 'Procesando...' : hasDevices ? 'Iniciar cierre' : 'Desactivar'}
+              </button>
+              <button
+                onClick={() => setShowDeactivateModal(false)}
+                className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

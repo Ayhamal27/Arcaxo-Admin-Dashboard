@@ -3,7 +3,7 @@ import { getStoreDetailAction } from '@/actions/stores/get-store';
 import { getFacadeSignedUrlAction } from '@/actions/stores/get-facade-signed-url';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { StatusDot } from '@/components/shared/DataTable';
-import { MapPin, Phone, Cpu, Calendar, Users, Pencil } from 'lucide-react';
+import { MapPin, Cpu, Calendar, Users, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { StoreDetailClient, StoreToggle } from './StoreDetailClient';
 import { StoreContactActions } from './StoreContactActions';
@@ -64,6 +64,8 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
             storeId={storeId}
             initialActive={store.active}
             installedDevicesCount={store.installed_devices_count ?? 0}
+            hasOpenSession={!!store.open_session_id}
+            openSessionType={store.open_session_type ?? null}
           />
         </div>
       </div>
@@ -140,14 +142,6 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
                   </p>
                 )}
 
-                {store.phone_number && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>
-                      {store.phone_country_code} {store.phone_number}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Stats grid 2x2 */}
