@@ -361,6 +361,38 @@ Desactiva o suspende un usuario, con opción de cancelar sus sesiones activas.
 
 ---
 
+### `rpc_admin_reset_user_password(p_target_user_id)`
+
+Resetea la contraseña de un usuario en `auth.users` desde backend SQL (`SECURITY DEFINER`) para evitar exponer `SUPABASE_SERVICE_ROLE_KEY` en frontend.
+
+**Permisos:** `authenticated` (`owner`, `admin`), `service_role`.
+
+**Parámetros:**
+
+| Parámetro | Tipo | Requerido | Notas |
+|---|---|---|---|
+| `p_target_user_id` | `uuid` | **Sí** | Usuario objetivo a resetear |
+
+**Retorna:**
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `success` | `boolean` | `true` si el reset fue aplicado |
+| `temp_password` | `text` | Contraseña temporal generada (solo si `success = true`) |
+| `error_message` | `text` | Mensaje de error (solo si `success = false`) |
+
+**Lógica:**
+- Valida actor autenticado con rol activo `owner` o `admin` (salvo `service_role`/`console admin`).
+- Valida existencia del usuario objetivo en `auth.users` (`deleted_at IS NULL`).
+- Genera contraseña temporal de 12 caracteres con mayúscula, minúscula, número y símbolo.
+- Actualiza `auth.users.encrypted_password` usando `extensions.crypt(..., extensions.gen_salt('bf'))`.
+
+**Restricciones:**
+- Un `admin` no puede resetear la contraseña de un `owner`.
+- No requiere exponer `service_role` en cliente.
+
+---
+
 ### `rpc_admin_delete_user(p_user_id, p_reason?)`
 
 Soft-delete de un usuario: marca el perfil como `'inactive'` y libera asignaciones de mantenimiento. La eliminación en `auth.users` la realiza el caller vía Admin API.
@@ -414,6 +446,7 @@ flowchart TD
 | Listar usuarios (admin) | `owner`, `admin` | |
 | Ver detalle de usuario (admin) | `owner`, `admin` | Incluye datos de `auth.users` |
 | Desactivar/suspender usuario | `owner`, `admin` | Admin no puede operar sobre owner |
+| Resetear contraseña de usuario | `owner`, `admin` | Admin no puede operar sobre owner; retorna password temporal |
 | Eliminar usuario (soft delete) | `owner` solamente | Sin sesiones activas; limpieza de assignments |
 | Verificar acceso propio | cualquier autenticado | |
 | Verificar acceso de otro usuario | `owner`, `admin` (activos) | |

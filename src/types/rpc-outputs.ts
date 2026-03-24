@@ -262,6 +262,12 @@ export interface RpcAdminDeleteUserOutput {
   error?: string | null;
 }
 
+export interface RpcAdminResetUserPasswordOutput {
+  success: boolean;
+  temp_password?: string;
+  error_message?: string;
+}
+
 /**
  * GEOGRAPHY domain RPC outputs
  */

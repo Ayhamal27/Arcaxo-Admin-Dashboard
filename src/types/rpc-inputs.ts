@@ -206,6 +206,10 @@ export interface RpcAdminDeleteUserInput {
   p_reason?: string | null;
 }
 
+export interface RpcAdminResetUserPasswordInput {
+  p_target_user_id: string;
+}
+
 /**
  * GEOGRAPHY domain RPC inputs
  */

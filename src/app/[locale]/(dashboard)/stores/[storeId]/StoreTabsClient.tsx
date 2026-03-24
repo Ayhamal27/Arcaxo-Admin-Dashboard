@@ -38,7 +38,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
   const devices = devicesData?.devices ?? [];
 
   return (
-    <div className="mt-6 bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden">
+    <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden">
       {/* Tab headers */}
       <div className="flex border-b border-[#E5E5EA]">
         <button

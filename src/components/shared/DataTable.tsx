@@ -172,14 +172,14 @@ const STATUS_COLORS: Record<string, string> = {
   operational: '#228D70',
   active: '#228D70',
   installed: '#228D70',
-  new_store: '#FADC45',
-  maintenance: '#FADC45',
-  connecting: '#FADC45',
+  new_store: '#0000FF',
+  maintenance: '#F59E0B',
+  connecting: '#F59E0B',
   inactive: '#FF4163',
   failed: '#FF4163',
   uninstalled: '#FF4163',
   suspended: '#FF4163',
-  pending: '#FADC45',
+  pending: '#F59E0B',
 };
 
 export function StatusDot({ status }: { status: string }) {

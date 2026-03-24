@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 interface BreadcrumbItem {
   label: string;
@@ -11,11 +12,12 @@ interface BreadcrumbItem {
 interface BreadcrumbProps {
   locale: string;
   items: BreadcrumbItem[];
+  className?: string;
 }
 
-export function Breadcrumb({ locale, items }: BreadcrumbProps) {
+export function Breadcrumb({ locale, items, className }: BreadcrumbProps) {
   return (
-    <nav className="flex items-center gap-2 mb-5" aria-label="Breadcrumb">
+    <nav className={cn('flex items-center gap-2 mb-5', className)} aria-label="Breadcrumb">
       {/* Logo mini */}
       <Link
         href={`/${locale}/stores`}

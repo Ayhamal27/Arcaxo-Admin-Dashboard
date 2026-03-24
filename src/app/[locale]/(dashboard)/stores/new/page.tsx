@@ -1,12 +1,12 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, ChevronDown, Loader2 } from 'lucide-react';
+import { MapPin, ChevronDown, Loader2, Navigation } from 'lucide-react';
 import {
   getCountries,
   getCountryCallingCode,
@@ -14,6 +14,7 @@ import {
   type CountryCode,
 } from 'libphonenumber-js';
 import { createStoreAction } from '@/actions/stores/create-store';
+import { reverseGeocodeAction } from '@/actions/geography/reverse-geocode';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { listCountriesAction, CountryOption } from '@/actions/geography/list-countries';
 import { listStatesAction, StateOption } from '@/actions/geography/list-states';
@@ -22,23 +23,22 @@ import { useTranslations } from 'next-intl';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function extractCoordsFromGoogleMapsUrl(url: string): {
-  lat: number;
-  lng: number;
-} | null {
-  const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
-  const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
-  return null;
-}
-
 function countryCodeToFlag(iso: string): string {
   return iso
     .toUpperCase()
     .split('')
     .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
     .join('');
+}
+
+/** Detects "lat, lng" format like "10.245141129088811, -68.00875269101005" */
+function parseLatLng(value: string): { lat: number; lng: number } | null {
+  const match = value.trim().match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (!match) return null;
+  const lat = parseFloat(match[1]);
+  const lng = parseFloat(match[2]);
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
 }
 
 // Build sorted list of phone countries once
@@ -52,30 +52,14 @@ const PHONE_COUNTRIES = getCountries()
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
-const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
-function makePhoneSchema() {
-  return z
-    .object({
-      phoneCountry: z.string().optional(),
-      phoneNumber: z.string().optional(),
-    })
-    .refine(
-      (data) => {
-        if (!data.phoneNumber) return true; // optional
-        if (!data.phoneCountry) return false;
-        return libIsValid(data.phoneNumber, data.phoneCountry as CountryCode);
-      },
-      { message: 'Número de teléfono inválido para el país seleccionado', path: ['phoneNumber'] }
-    );
-}
-
 const Step1Schema = z
   .object({
     name: z.string().min(2, 'Mínimo 2 caracteres').max(100),
     phoneCountry: z.string().optional(),
     phoneNumber: z.string().optional(),
-    google_maps_url: z.string().min(5, 'Dirección requerida'),
+    address: z.string().min(3, 'Dirección requerida'),
+    latitude: z.number().refine((v) => v !== 0, 'Coordenadas requeridas'),
+    longitude: z.number().refine((v) => v !== 0, 'Coordenadas requeridas'),
   })
   .refine(
     (data) => {
@@ -96,7 +80,10 @@ const Step2Schema = z
       .string()
       .min(1, 'Correo requerido')
       .email('Formato de correo inválido')
-      .refine((v) => EMAIL_REGEX.test(v), 'Ingrese un correo válido (ej: usuario@dominio.com)'),
+      .refine(
+        (v) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(v),
+        'Ingrese un correo válido (ej: usuario@dominio.com)'
+      ),
     respPhoneCountry: z.string().optional(),
     respPhoneNumber: z.string().optional(),
   })
@@ -268,6 +255,16 @@ function FigmaStepProgress({
   );
 }
 
+// ─── Normalize string for fuzzy matching ────────────────────────────────────
+
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 interface GeoData {
@@ -293,6 +290,18 @@ export default function NuevaTiendaPage({
     {}
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Location input state
+  const [locationInput, setLocationInput] = useState('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [resolvedAddress, setResolvedAddress] = useState('');
+  const [geoSuggestion, setGeoSuggestion] = useState<{
+    country: string;
+    countryCode: string;
+    state: string;
+    city: string;
+  } | null>(null);
+  const [showGeoConfirm, setShowGeoConfirm] = useState(false);
 
   // Geography data
   const [countries, setCountries] = useState<CountryOption[]>([]);
@@ -343,11 +352,12 @@ export default function NuevaTiendaPage({
     formState: { errors: err1 },
   } = useForm<Step1FormData>({
     resolver: zodResolver(Step1Schema),
-    defaultValues: { phoneCountry: 'VE', phoneNumber: '' },
+    defaultValues: { phoneCountry: 'VE', phoneNumber: '', address: '', latitude: 0, longitude: 0 },
   });
 
   const phoneCountry1 = w1('phoneCountry');
   const phoneNumber1 = w1('phoneNumber');
+  const latValue = w1('latitude');
 
   // Step 2 form
   const {
@@ -363,6 +373,120 @@ export default function NuevaTiendaPage({
 
   const respPhoneCountry = w2('respPhoneCountry');
   const respPhoneNumber = w2('respPhoneNumber');
+
+  // Handle location input: detect lat,lng paste and reverse geocode
+  const handleLocationChange = useCallback(
+    async (value: string) => {
+      setLocationInput(value);
+      setResolvedAddress('');
+      setGeoSuggestion(null);
+      setShowGeoConfirm(false);
+
+      // Reset coords when input changes
+      sv1('latitude', 0);
+      sv1('longitude', 0);
+      sv1('address', '');
+
+      const coords = parseLatLng(value);
+      if (!coords) {
+        // Not a lat,lng format — treat as manual address text
+        if (value.trim().length >= 5) {
+          sv1('address', value.trim(), { shouldValidate: true });
+        }
+        return;
+      }
+
+      // It's a lat,lng — reverse geocode
+      sv1('latitude', coords.lat, { shouldValidate: true });
+      sv1('longitude', coords.lng, { shouldValidate: true });
+      setIsGeocoding(true);
+
+      try {
+        const geo = await reverseGeocodeAction(coords.lat, coords.lng);
+        if (geo) {
+          sv1('address', geo.address, { shouldValidate: true });
+          setResolvedAddress(geo.address);
+          if (geo.country && geo.state && geo.city) {
+            setGeoSuggestion({
+              country: geo.country,
+              countryCode: geo.countryCode,
+              state: geo.state,
+              city: geo.city,
+            });
+            setShowGeoConfirm(true);
+          }
+        } else {
+          // Geocoding returned no results — use coords as address
+          sv1('address', `${coords.lat}, ${coords.lng}`, { shouldValidate: true });
+        }
+      } finally {
+        setIsGeocoding(false);
+      }
+    },
+    [sv1]
+  );
+
+  // Auto-fill geo dropdowns from geocoding suggestion
+  const handleAcceptGeoSuggestion = useCallback(async () => {
+    if (!geoSuggestion) return;
+    setShowGeoConfirm(false);
+
+    // 1. Find and select country
+    const matchedCountry = countries.find(
+      (c) =>
+        normalize(c.country_name) === normalize(geoSuggestion.country) ||
+        c.country_code.toUpperCase() === geoSuggestion.countryCode.toUpperCase()
+    );
+    if (!matchedCountry) {
+      toast.error(`País "${geoSuggestion.country}" no encontrado en la lista`);
+      return;
+    }
+
+    setGeoData({ countryId: matchedCountry.country_id, stateId: undefined, cityId: undefined });
+
+    // 2. Load states and find match
+    try {
+      const statesList = await listStatesAction(matchedCountry.country_id);
+      setStates(statesList);
+
+      const matchedState = statesList.find(
+        (s) =>
+          normalize(s.state_name) === normalize(geoSuggestion.state) ||
+          normalize(s.state_name).includes(normalize(geoSuggestion.state)) ||
+          normalize(geoSuggestion.state).includes(normalize(s.state_name))
+      );
+      if (!matchedState) {
+        toast.info(`Estado "${geoSuggestion.state}" no encontrado. Selecciónalo manualmente.`);
+        return;
+      }
+
+      setGeoData((prev) => ({
+        ...prev,
+        stateId: matchedState.state_id,
+        cityId: undefined,
+      }));
+
+      // 3. Load cities and find match
+      const citiesList = await listCitiesAction(matchedCountry.country_id, matchedState.state_id);
+      setCities(citiesList);
+
+      const matchedCity = citiesList.find(
+        (c) =>
+          normalize(c.city_name) === normalize(geoSuggestion.city) ||
+          normalize(c.city_name).includes(normalize(geoSuggestion.city)) ||
+          normalize(geoSuggestion.city).includes(normalize(c.city_name))
+      );
+      if (matchedCity) {
+        setGeoData((prev) => ({ ...prev, cityId: matchedCity.city_id }));
+        setGeoErrors({});
+        toast.success('Ubicación autocompletada');
+      } else {
+        toast.info(`Ciudad "${geoSuggestion.city}" no encontrada. Selecciónala manualmente.`);
+      }
+    } catch {
+      toast.error('Error al cargar datos geográficos');
+    }
+  }, [geoSuggestion, countries]);
 
   const handleStep1 = (data: Step1FormData) => {
     const newGeoErrors: typeof geoErrors = {};
@@ -385,8 +509,6 @@ export default function NuevaTiendaPage({
 
     setIsSubmitting(true);
 
-    const coords = extractCoordsFromGoogleMapsUrl(step1Data.google_maps_url);
-
     // Build phone with dial code
     const storeDialCode = step1Data.phoneCountry
       ? `+${getCountryCallingCode(step1Data.phoneCountry as CountryCode)}`
@@ -399,9 +521,9 @@ export default function NuevaTiendaPage({
       const result = await createStoreAction({
         name: step1Data.name,
         city_id: geoData.cityId,
-        address: step1Data.google_maps_url,
-        latitude: coords?.lat ?? 0,
-        longitude: coords?.lng ?? 0,
+        address: step1Data.address,
+        latitude: step1Data.latitude,
+        longitude: step1Data.longitude,
         phone_country_code: step1Data.phoneNumber ? storeDialCode : null,
         phone_number: step1Data.phoneNumber || null,
         responsible_first_name: data.responsible_first_name,
@@ -479,14 +601,73 @@ export default function NuevaTiendaPage({
                 </div>
 
                 <div>
-                  <FigmaLabel>Direccion exacta con google maps</FigmaLabel>
-                  <FigmaInput
-                    placeholder="Introduce el enlace de google maps"
-                    icon={<MapPin className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />}
-                    error={!!err1.google_maps_url}
-                    {...reg1('google_maps_url')}
+                  <FigmaLabel>Ubicación de la tienda</FigmaLabel>
+                  <div
+                    className={`flex items-center gap-[10px] w-full h-[52px] bg-[#F0F0F3] rounded-[8px] px-[16px] ${
+                      err1.address || err1.latitude ? 'ring-1 ring-[#FF4163]' : ''
+                    }`}
+                  >
+                    {isGeocoding ? (
+                      <Loader2 className="w-[24px] h-[24px] text-[#0000FF] flex-shrink-0 animate-spin" />
+                    ) : (
+                      <Navigation className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />
+                    )}
+                    <input
+                      className="flex-1 bg-transparent text-[18px] text-[#1D1D1D] placeholder:text-[#838383] outline-none h-full"
+                      placeholder="10.2451, -68.0087"
+                      value={locationInput}
+                      onChange={(e) => handleLocationChange(e.target.value)}
+                      onPaste={(e) => {
+                        // Capture ref before React nullifies the synthetic event
+                        const input = e.currentTarget;
+                        setTimeout(() => {
+                          handleLocationChange(input.value);
+                        }, 0);
+                      }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1 px-1">
+                    Pega las coordenadas de Google Maps (click derecho en el mapa → copiar coordenadas) o escribe la dirección manualmente
+                  </p>
+                  <FieldError
+                    message={err1.address?.message || err1.latitude?.message}
                   />
-                  <FieldError message={err1.google_maps_url?.message} />
+
+                  {/* Resolved address from geocoding */}
+                  {resolvedAddress && latValue !== 0 && (
+                    <p className="text-[12px] text-[#228D70] mt-1 px-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      {resolvedAddress}
+                    </p>
+                  )}
+
+                  {/* Geo suggestion confirm */}
+                  {showGeoConfirm && geoSuggestion && (
+                    <div className="mt-2 p-3 bg-[#F0F0FF] border border-[#D0D0FF] rounded-[8px]">
+                      <p className="text-[13px] text-[#191919] mb-2">
+                        Ubicación detectada: <span className="font-medium">{geoSuggestion.city}, {geoSuggestion.state}, {geoSuggestion.country}</span>
+                      </p>
+                      <p className="text-[12px] text-[#667085] mb-3">
+                        ¿Deseas autocompletar los campos de País, Estado y Ciudad?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAcceptGeoSuggestion}
+                          className="h-[32px] px-4 text-[13px] font-medium text-white bg-[#0000FF] rounded-[6px] hover:bg-[#0000CC] transition-colors cursor-pointer"
+                        >
+                          Sí, autocompletar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowGeoConfirm(false)}
+                          className="h-[32px] px-4 text-[13px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[6px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
+                        >
+                          No, lo haré manual
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

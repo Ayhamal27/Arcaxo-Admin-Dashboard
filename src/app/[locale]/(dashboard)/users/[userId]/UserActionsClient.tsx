@@ -129,7 +129,7 @@ export function UserActionsClient({
 
         <button
           onClick={() => setShowPasswordModal(true)}
-          className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#7C3AED] border border-[#7C3AED] rounded-[8px] hover:bg-[#F5F0FF] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#7C3AED] border border-[#7C3AED] rounded-[8px] hover:bg-[#F5F0FF] transition-colors cursor-pointer"
         >
           <KeyRound className="w-4 h-4" />
           Asignar contraseña
@@ -141,7 +141,7 @@ export function UserActionsClient({
               setNewStatus(ProfileStatus.ACTIVE);
               setShowStatusModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#228D70] border border-[#228D70] rounded-[8px] hover:bg-[#E6F9F1] transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#228D70] border border-[#228D70] rounded-[8px] hover:bg-[#E6F9F1] transition-colors cursor-pointer"
           >
             <CheckCircle className="w-4 h-4" />
             Activar
@@ -154,7 +154,7 @@ export function UserActionsClient({
               setNewStatus(ProfileStatus.INACTIVE);
               setShowStatusModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
           >
             <UserX className="w-4 h-4" />
             Desactivar
@@ -167,7 +167,7 @@ export function UserActionsClient({
               setNewStatus(ProfileStatus.SUSPENDED);
               setShowStatusModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#FF4163] border border-[#FF4163] rounded-[8px] hover:bg-[#FFE8EC] transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#FF4163] border border-[#FF4163] rounded-[8px] hover:bg-[#FFE8EC] transition-colors cursor-pointer"
           >
             <UserX className="w-4 h-4" />
             Suspender
@@ -176,7 +176,7 @@ export function UserActionsClient({
 
         <button
           onClick={() => setShowDeleteModal(true)}
-          className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#FF4163] border border-[#FF4163] rounded-[8px] hover:bg-[#FFE8EC] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-[14px] font-medium text-[#FF4163] border border-[#FF4163] rounded-[8px] hover:bg-[#FFE8EC] transition-colors cursor-pointer"
         >
           <Trash2 className="w-4 h-4" />
           Eliminar
@@ -237,7 +237,7 @@ export function UserActionsClient({
           <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">Asignar nueva contraseña</h3>
-              <button onClick={() => setShowPasswordModal(false)}>
+              <button onClick={() => setShowPasswordModal(false)} className="cursor-pointer">
                 <X className="w-5 h-5 text-[#667085]" />
               </button>
             </div>
@@ -251,14 +251,14 @@ export function UserActionsClient({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowPasswordModal(false)}
-                className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors"
+                className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleResetPassword}
                 disabled={isLoading}
-                className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#7C3AED] rounded-[8px] hover:bg-[#6D28D9] disabled:opacity-50 transition-colors"
+                className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#7C3AED] rounded-[8px] hover:bg-[#6D28D9] disabled:opacity-50 transition-colors cursor-pointer"
               >
                 {isLoading ? 'Generando...' : 'Generar contraseña'}
               </button>

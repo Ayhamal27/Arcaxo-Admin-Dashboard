@@ -11,6 +11,7 @@ import type {
   RpcAdminGetUserDetailInput,
   RpcAdminDeactivateUserInput,
   RpcAdminDeleteUserInput,
+  RpcAdminResetUserPasswordInput,
   RpcUpsertUserProfileInput,
   RpcUserAccessGateInput,
   RpcUserActiveSessionInput,
@@ -46,6 +47,7 @@ import type {
   RpcAdminGetUserDetailOutput,
   RpcAdminDeactivateUserOutput,
   RpcAdminDeleteUserOutput,
+  RpcAdminResetUserPasswordOutput,
   RpcUpsertUserProfileOutput,
   RpcUserAccessGateOutput,
   RpcUserActiveSessionOutput,
@@ -67,6 +69,7 @@ import type {
   RpcSensorUnlinkOutput,
   RpcGetNearbyInstallersOutputItem,
   RpcStoreInstallationContextUpdateOutput,
+  RpcStoreWifiCredentialsGetOutput,
 } from '@/types/rpc-outputs';
 
 /**
@@ -138,6 +141,12 @@ export const rpcStoreInstallationContextUpdate = (p: RpcStoreInstallationContext
     p as unknown as Record<string, unknown>
   );
 
+export const rpcStoreWifiCredentialsGet = (p: { p_store_id: string }) =>
+  callRpc<RpcStoreWifiCredentialsGetOutput>(
+    'rpc_store_wifi_credentials_get',
+    p as unknown as Record<string, unknown>
+  );
+
 // ─── USERS ───────────────────────────────────────────────────────────────────
 
 export const rpcAdminListUsers = (p: RpcAdminListUsersInput = {}) =>
@@ -161,6 +170,12 @@ export const rpcAdminDeactivateUser = (p: RpcAdminDeactivateUserInput) =>
 export const rpcAdminDeleteUser = (p: RpcAdminDeleteUserInput) =>
   callRpc<RpcAdminDeleteUserOutput>(
     'rpc_admin_delete_user',
+    p as unknown as Record<string, unknown>
+  );
+
+export const rpcAdminResetUserPassword = (p: RpcAdminResetUserPasswordInput) =>
+  callRpc<RpcAdminResetUserPasswordOutput>(
+    'rpc_admin_reset_user_password',
     p as unknown as Record<string, unknown>
   );
 

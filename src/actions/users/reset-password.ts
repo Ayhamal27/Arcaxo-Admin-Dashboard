@@ -1,14 +1,6 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
-
-function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  );
-}
+import { rpcAdminResetUserPassword } from '@/lib/supabase/rpc';
 
 export interface ResetPasswordResult {
   success: boolean;
@@ -18,21 +10,22 @@ export interface ResetPasswordResult {
 
 export async function resetPasswordAction(userId: string): Promise<ResetPasswordResult> {
   try {
-    const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+    const raw = await rpcAdminResetUserPassword({ p_target_user_id: userId });
 
-    const adminClient = createAdminClient();
-    const { error } = await adminClient.auth.admin.updateUserById(userId, {
-      password: tempPassword,
-    });
+    // Handle both single object and array responses
+    const result = Array.isArray(raw) ? raw[0] : raw;
 
-    if (error) {
-      return { success: false, error: error.message };
+    if (!result || !result.success) {
+      return {
+        success: false,
+        error: result?.error_message ?? 'Error al restablecer contraseña',
+      };
     }
 
-    return { success: true, temp_password: tempPassword };
+    return { success: true, temp_password: result.temp_password };
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Error al restablecer contraseña';
-    console.error('[resetPasswordAction]', error);
+    console.error('[resetPasswordAction] error:', error);
     return { success: false, error: msg };
   }
 }

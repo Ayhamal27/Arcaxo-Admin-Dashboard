@@ -48,7 +48,7 @@ function safeFormat(date: string | null | undefined, fmt: string) {
 const STORE_STATUS_COLORS: Record<string, string> = {
   operational: '#228D70',
   active: '#228D70',
-  new_store: '#F59E0B',
+  new_store: '#0000FF',
   maintenance: '#F59E0B',
   inactive: '#FF4163',
   suspended: '#FF4163',

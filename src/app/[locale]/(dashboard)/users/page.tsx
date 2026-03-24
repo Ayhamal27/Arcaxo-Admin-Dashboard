@@ -234,7 +234,8 @@ export default function UsuariosPage({
               {users.map((user) => (
                 <tr
                   key={user.user_id}
-                  className="border-b border-[#E5E5EA] last:border-b-0 hover:bg-[#FAFAFF] transition-colors"
+                  className="border-b border-[#E5E5EA] last:border-b-0 hover:bg-[#FAFAFF] transition-colors cursor-pointer"
+                  onClick={() => router.push(`/${locale}/users/${user.user_id}`)}
                 >
                   {/* Usuario */}
                   <td className="pl-[22px] pr-[10px] overflow-hidden">
@@ -279,7 +280,7 @@ export default function UsuariosPage({
                   </td>
 
                   {/* Acciones */}
-                  <td className="p-[10px]">
+                  <td className="p-[10px]" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-[12px] items-center justify-center">
                       <Link
                         href={`/${locale}/users/${user.user_id}`}

@@ -53,6 +53,7 @@ export async function createStoreAction(
       p_responsible_phone_country_code: data.responsible_phone_country_code ?? null,
       p_responsible_phone_number: data.responsible_phone_number ?? null,
       p_authorized_devices_count: data.authorized_devices_count ?? 0,
+      p_preload_payload: { setup: true },
     });
 
     if (result.error) {
