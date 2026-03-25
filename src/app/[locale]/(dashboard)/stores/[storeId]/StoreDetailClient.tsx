@@ -16,7 +16,7 @@ import { MaintenanceRequestCause, StoreToggleAction } from '@/types/database';
 import { Wifi, Cpu, Camera, X, Upload, Pencil, Eye, EyeOff, Wrench } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', ''];
 const LG_BREAKPOINT = 1024;
 
 function useIsDesktop() {
@@ -165,7 +165,9 @@ export function StoreDetailClient({
   // ─── Facade file handling ──────────────────────────────────────────────────
 
   const processFile = useCallback((file: File) => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const heicByExt = ['heic', 'heif'].includes(ext);
+    if (!ACCEPTED_TYPES.includes(file.type) && !heicByExt) {
       toast.error(t('facadeOnlyImages'));
       return;
     }
@@ -217,15 +219,12 @@ export function StoreDetailClient({
     }
     setFacadeLoading(true);
     try {
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(facadeFile);
-      });
+      const formData = new FormData();
+      formData.append('file', facadeFile);
+      formData.append('storeId', storeId);
+      formData.append('fileName', facadeFile.name);
 
-      const result = await uploadFacadePhotoAction(storeId, base64, facadeFile.name);
+      const result = await uploadFacadePhotoAction(formData);
       if (!result.success) {
         toast.error(result.error ?? t('facadeUploadError'));
         return;
@@ -536,7 +535,7 @@ export function StoreDetailClient({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
               onChange={handleFileChange}
               className="hidden"
             />

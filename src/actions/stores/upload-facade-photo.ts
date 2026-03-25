@@ -14,18 +14,24 @@ export interface UploadFacadePhotoResult {
 }
 
 export async function uploadFacadePhotoAction(
-  storeId: string,
-  fileBase64: string,
-  fileName: string
+  formData: FormData
 ): Promise<UploadFacadePhotoResult> {
   try {
-    // Decode base64 to buffer
-    const base64Data = fileBase64.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
+    const file = formData.get('file') as File | null;
+    const storeId = formData.get('storeId') as string;
+    const fileName = formData.get('fileName') as string;
+
+    if (!file || !storeId) {
+      return { success: false, error: 'Missing file or storeId' };
+    }
+
+    // Convert File to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
     // Determine content type from original filename
     const ext = fileName.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const contentType = ext === 'heic' || ext === 'heif' ? 'image/heic' : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
     // Build storage path: facade-photos/{storeId}/{timestamp}.{ext}
     const storagePath = `${storeId}/${Date.now()}.${ext}`;
