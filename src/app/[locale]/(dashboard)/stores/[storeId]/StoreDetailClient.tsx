@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { toggleStoreActiveAction } from '@/actions/stores/toggle-store-active';
 import { updateStoreWifiAction } from '@/actions/stores/update-store-wifi';
 import { updateStoreDevicesAction } from '@/actions/stores/update-store-devices';
@@ -52,6 +53,7 @@ export function StoreDetailClient({
   const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
   const isDesktop = useIsDesktop();
   const overlayLeft = isDesktop ? (sidebarCollapsed ? 72 : 317) : 0;
+  const t = useTranslations('storeDetail');
 
   // Modal states
   const [showWifiModal, setShowWifiModal] = useState(false);
@@ -117,17 +119,17 @@ export function StoreDetailClient({
 
   const handleWifiSubmit = async () => {
     if (!wifiSsidInput.trim() || !wifiPasswordInput.trim()) {
-      toast.error('SSID y contraseña son requeridos');
+      toast.error(t('wifiSsidRequired'));
       return;
     }
     setWifiLoading(true);
     try {
       const result = await updateStoreWifiAction(storeId, wifiSsidInput, wifiPasswordInput);
       if (!result.success) {
-        toast.error(result.error ?? 'Error al actualizar WiFi');
+        toast.error(result.error ?? t('wifiUpdateError'));
         return;
       }
-      toast.success('Credenciales WiFi actualizadas');
+      toast.success(t('wifiUpdateSuccess'));
       setWifiSsidDisplay(wifiSsidInput);
       setWifiPasswordDisplay(wifiPasswordInput);
       setWifiEditing(false);
@@ -141,17 +143,17 @@ export function StoreDetailClient({
   const handleDevicesSubmit = async () => {
     const count = parseInt(devicesInput, 10);
     if (isNaN(count) || count < 0) {
-      toast.error('Ingresa un número válido (0 o mayor)');
+      toast.error(t('devicesInvalidNumber'));
       return;
     }
     setDevicesLoading(true);
     try {
       const result = await updateStoreDevicesAction(storeId, count);
       if (!result.success) {
-        toast.error(result.error ?? 'Error al actualizar dispositivos');
+        toast.error(result.error ?? t('devicesUpdateError'));
         return;
       }
-      toast.success('Contrato de dispositivos actualizado');
+      toast.success(t('devicesUpdateSuccess'));
       setShowDevicesModal(false);
       router.refresh();
     } finally {
@@ -163,17 +165,17 @@ export function StoreDetailClient({
 
   const processFile = useCallback((file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      toast.error('Solo se aceptan imágenes JPG, PNG o WebP');
+      toast.error(t('facadeOnlyImages'));
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('La imagen no debe superar 5 MB');
+      toast.error(t('facadeMaxSizeError'));
       return;
     }
     setFacadeFile(file);
     const url = URL.createObjectURL(file);
     setFacadePreview(url);
-  }, []);
+  }, [t]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -209,7 +211,7 @@ export function StoreDetailClient({
 
   const handleFacadeSubmit = async () => {
     if (!facadeFile) {
-      toast.error('Selecciona una imagen');
+      toast.error(t('facadeSelectImage'));
       return;
     }
     setFacadeLoading(true);
@@ -224,10 +226,10 @@ export function StoreDetailClient({
 
       const result = await uploadFacadePhotoAction(storeId, base64, facadeFile.name);
       if (!result.success) {
-        toast.error(result.error ?? 'Error al subir imagen');
+        toast.error(result.error ?? t('facadeUploadError'));
         return;
       }
-      toast.success('Foto de fachada actualizada');
+      toast.success(t('facadeUploadSuccess'));
       clearFacadeSelection();
       setShowFacadeModal(false);
       router.refresh();
@@ -244,7 +246,7 @@ export function StoreDetailClient({
   return (
     <>
       {/* Action buttons */}
-      <div className="space-y-3 pb-4">
+      <div className="space-y-3">
         {/* WiFi */}
         <button
           onClick={handleOpenWifiModal}
@@ -252,9 +254,9 @@ export function StoreDetailClient({
         >
           <Wifi className="w-4 h-4 text-[#0000FF] flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-[#191919]">Credenciales WiFi</p>
+            <p className="text-[13px] font-medium text-[#191919]">{t('wifiCredentials')}</p>
             <p className="text-[12px] text-[#667085] truncate">
-              {wifiSsid ? `SSID: ${wifiSsid}` : 'Sin configurar'}
+              {wifiSsid ? t('wifiSsidLabel', { ssid: wifiSsid }) : t('wifiNotConfigured')}
             </p>
           </div>
         </button>
@@ -266,8 +268,8 @@ export function StoreDetailClient({
         >
           <Cpu className="w-4 h-4 text-[#7C3AED] flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-[#191919]">Contrato de dispositivos</p>
-            <p className="text-[12px] text-[#667085]">{authorizedDevicesCount} autorizados</p>
+            <p className="text-[13px] font-medium text-[#191919]">{t('deviceContract')}</p>
+            <p className="text-[12px] text-[#667085]">{t('devicesAuthorized', { count: authorizedDevicesCount })}</p>
           </div>
         </button>
 
@@ -278,9 +280,9 @@ export function StoreDetailClient({
         >
           <Camera className="w-4 h-4 text-[#228D70] flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-[#191919]">Foto de fachada</p>
+            <p className="text-[13px] font-medium text-[#191919]">{t('facadePhoto')}</p>
             <p className="text-[12px] text-[#667085]">
-              {facadePhotoUrl ? 'Configurada' : 'Sin foto'}
+              {facadePhotoUrl ? t('facadeConfigured') : t('facadeNotConfigured')}
             </p>
           </div>
         </button>
@@ -294,7 +296,7 @@ export function StoreDetailClient({
         >
           <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[18px] font-semibold text-[#191919]">Credenciales WiFi</h3>
+              <h3 className="text-[18px] font-semibold text-[#191919]">{t('wifiModalTitle')}</h3>
               <button onClick={handleCloseWifiModal} className="cursor-pointer">
                 <X className="w-5 h-5 text-[#667085]" />
               </button>
@@ -303,24 +305,24 @@ export function StoreDetailClient({
             {wifiFetching ? (
               <div className="flex items-center justify-center py-8">
                 <div className="w-6 h-6 border-2 border-[#0000FF] border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-[14px] text-[#667085]">Cargando credenciales...</span>
+                <span className="ml-3 text-[14px] text-[#667085]">{t('wifiLoading')}</span>
               </div>
             ) : !wifiEditing && wifiSsidDisplay ? (
               /* ─── Read-only mode ─────────────────────────────────────── */
               <>
                 <p className="text-[14px] text-[#667085] mb-5">
-                  Credenciales configuradas para esta tienda.
+                  {t('wifiConfigured')}
                 </p>
 
                 <div className="space-y-4 mb-5">
                   <div>
-                    <p className="text-[13px] text-[#667085] mb-1">Nombre de red (SSID)</p>
+                    <p className="text-[13px] text-[#667085] mb-1">{t('wifiNetworkName')}</p>
                     <div className="w-full h-[44px] px-3 rounded-[8px] border border-[#E5E5EA] bg-[#F9FAFB] text-[14px] text-[#191919] flex items-center">
                       {wifiSsidDisplay}
                     </div>
                   </div>
                   <div>
-                    <p className="text-[13px] text-[#667085] mb-1">Contraseña</p>
+                    <p className="text-[13px] text-[#667085] mb-1">{t('wifiPassword')}</p>
                     <div className="w-full h-[44px] px-3 rounded-[8px] border border-[#E5E5EA] bg-[#F9FAFB] text-[14px] text-[#191919] flex items-center justify-between">
                       <span>
                         {wifiShowPassword
@@ -346,14 +348,14 @@ export function StoreDetailClient({
                     onClick={handleCloseWifiModal}
                     className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
                   >
-                    Cerrar
+                    {t('wifiClose')}
                   </button>
                   <button
                     onClick={() => setWifiEditing(true)}
                     className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Pencil className="w-4 h-4" />
-                    Editar
+                    {t('wifiEdit')}
                   </button>
                 </div>
               </>
@@ -361,28 +363,27 @@ export function StoreDetailClient({
               /* ─── Edit mode ──────────────────────────────────────────── */
               <>
                 <p className="text-[14px] text-[#667085] mb-5">
-                  Configura las credenciales de la red WiFi de la tienda. La contraseña se almacena
-                  encriptada.
+                  {t('wifiEditDescription')}
                 </p>
 
                 <div className="space-y-4 mb-5">
                   <div>
-                    <p className="text-[13px] text-[#667085] mb-1">Nombre de red (SSID)</p>
+                    <p className="text-[13px] text-[#667085] mb-1">{t('wifiNetworkName')}</p>
                     <input
                       type="text"
                       value={wifiSsidInput}
                       onChange={(e) => setWifiSsidInput(e.target.value)}
-                      placeholder="Nombre de la red WiFi"
+                      placeholder={t('wifiNetworkPlaceholder')}
                       className="w-full h-[44px] px-3 rounded-[8px] border border-[#D0D5DD] text-[14px] text-[#191919] focus:border-[#0000FF] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <p className="text-[13px] text-[#667085] mb-1">Contraseña</p>
+                    <p className="text-[13px] text-[#667085] mb-1">{t('wifiPassword')}</p>
                     <input
                       type="password"
                       value={wifiPasswordInput}
                       onChange={(e) => setWifiPasswordInput(e.target.value)}
-                      placeholder="Contraseña de la red WiFi"
+                      placeholder={t('wifiPasswordPlaceholder')}
                       className="w-full h-[44px] px-3 rounded-[8px] border border-[#D0D5DD] text-[14px] text-[#191919] focus:border-[#0000FF] focus:outline-none"
                     />
                   </div>
@@ -393,14 +394,14 @@ export function StoreDetailClient({
                     onClick={wifiSsidDisplay ? () => setWifiEditing(false) : handleCloseWifiModal}
                     className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
                   >
-                    Cancelar
+                    {t('wifiCancel')}
                   </button>
                   <button
                     onClick={handleWifiSubmit}
                     disabled={wifiLoading}
                     className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] disabled:opacity-50 transition-colors cursor-pointer"
                   >
-                    {wifiLoading ? 'Guardando...' : 'Guardar'}
+                    {wifiLoading ? t('wifiSaving') : t('wifiSave')}
                   </button>
                 </div>
               </>
@@ -418,19 +419,18 @@ export function StoreDetailClient({
         >
           <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[18px] font-semibold text-[#191919]">Contrato de dispositivos</h3>
+              <h3 className="text-[18px] font-semibold text-[#191919]">{t('devicesModalTitle')}</h3>
               <button onClick={() => setShowDevicesModal(false)} className="cursor-pointer">
                 <X className="w-5 h-5 text-[#667085]" />
               </button>
             </div>
 
             <p className="text-[14px] text-[#667085] mb-5">
-              Modifica la cantidad de dispositivos autorizados para esta tienda. Actualmente hay{' '}
-              {installedDevicesCount} dispositivo(s) instalado(s).
+              {t('devicesModalDescription', { count: installedDevicesCount })}
             </p>
 
             <div className="mb-5">
-              <p className="text-[13px] text-[#667085] mb-1">Dispositivos autorizados</p>
+              <p className="text-[13px] text-[#667085] mb-1">{t('devicesAuthorizedLabel')}</p>
               <input
                 type="number"
                 min="0"
@@ -445,14 +445,14 @@ export function StoreDetailClient({
                 onClick={() => setShowDevicesModal(false)}
                 className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
               >
-                Cancelar
+                {t('devicesCancel')}
               </button>
               <button
                 onClick={handleDevicesSubmit}
                 disabled={devicesLoading}
                 className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#7C3AED] rounded-[8px] hover:bg-[#6D28D9] disabled:opacity-50 transition-colors cursor-pointer"
               >
-                {devicesLoading ? 'Guardando...' : 'Guardar'}
+                {devicesLoading ? t('devicesSaving') : t('devicesSave')}
               </button>
             </div>
           </div>
@@ -472,14 +472,14 @@ export function StoreDetailClient({
           >
             {/* Header — fixed */}
             <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h3 className="text-[18px] font-semibold text-[#191919]">Foto de fachada</h3>
+              <h3 className="text-[18px] font-semibold text-[#191919]">{t('facadeModalTitle')}</h3>
               <button onClick={handleCloseFacadeModal} className="cursor-pointer">
                 <X className="w-5 h-5 text-[#667085]" />
               </button>
             </div>
 
             <p className="text-[14px] text-[#667085] mb-4 flex-shrink-0">
-              Arrastra una imagen o haz clic para seleccionar desde tu equipo.
+              {t('facadeModalDescription')}
             </p>
 
             {/* Drop zone / Preview — scrollable area */}
@@ -490,7 +490,7 @@ export function StoreDetailClient({
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={facadePreview}
-                      alt="Vista previa"
+                      alt={t('facadePreviewAlt')}
                       className="max-w-full max-h-full object-contain"
                     />
                     <button
@@ -521,13 +521,13 @@ export function StoreDetailClient({
                   </div>
                   <div className="text-center">
                     <p className="text-[14px] font-medium text-[#191919]">
-                      {isDragging ? 'Suelta la imagen aquí' : 'Arrastra una imagen aquí'}
+                      {isDragging ? t('facadeDragHere') : t('facadeDragOrClick')}
                     </p>
                     <p className="text-[12px] text-[#667085] mt-1">
-                      o <span className="text-[#228D70] font-medium">haz clic para buscar</span>
+                      {t('facadeOr')} <span className="text-[#228D70] font-medium">{t('facadeClickToSearch')}</span>
                     </p>
                   </div>
-                  <p className="text-[11px] text-[#98A2B3]">JPG, PNG o WebP — máx. 5 MB</p>
+                  <p className="text-[11px] text-[#98A2B3]">{t('facadeMaxSize')}</p>
                 </div>
               )}
             </div>
@@ -546,14 +546,14 @@ export function StoreDetailClient({
                 onClick={handleCloseFacadeModal}
                 className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
               >
-                Cancelar
+                {t('facadeCancel')}
               </button>
               <button
                 onClick={handleFacadeSubmit}
                 disabled={facadeLoading || !facadeFile}
                 className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#228D70] rounded-[8px] hover:bg-[#1A6B55] disabled:opacity-50 transition-colors cursor-pointer"
               >
-                {facadeLoading ? 'Subiendo...' : 'Guardar'}
+                {facadeLoading ? t('facadeUploading') : t('facadeSave')}
               </button>
             </div>
           </div>
@@ -565,16 +565,6 @@ export function StoreDetailClient({
 }
 
 /* ─── Toggle-only component for top-right ─────────────────────────────────── */
-
-const TOGGLE_MESSAGES: Record<StoreToggleAction, string> = {
-  [StoreToggleAction.ACTIVATED_NEW]: 'Tienda activada exitosamente',
-  [StoreToggleAction.ACTIVATED_WITH_MAINTENANCE_REQUEST]:
-    'Tienda activada — solicitud de mantenimiento creada',
-  [StoreToggleAction.MAINTENANCE_ALREADY_OPEN]:
-    'Ya existe una solicitud de mantenimiento abierta',
-  [StoreToggleAction.MAINTENANCE_REQUEST_CREATED]: 'Solicitud de mantenimiento creada',
-  [StoreToggleAction.CLOSED]: 'Tienda desactivada. Las sesiones abiertas continúan.',
-};
 
 export function StoreToggle({
   storeId,
@@ -592,21 +582,29 @@ export function StoreToggle({
   const [active, setActive] = useState(initialActive);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
-  const [installerMessage, setInstallerMessage] = useState('');
   const [understoodCheckbox, setUnderstoodCheckbox] = useState(false);
   const router = useRouter();
   const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
+  const t = useTranslations('storeDetail');
 
   const hasDevices = installedDevicesCount > 0;
   const blockingSessionType =
     openSessionType === 'install'
-      ? 'instalación'
+      ? t('sessionInstall')
       : openSessionType === 'maintenance'
-      ? 'mantenimiento'
-      : 'activa';
+      ? t('sessionMaintenance')
+      : t('sessionActive');
   const blockedByOpenSessionMessage = hasOpenSession
-    ? `No puedes activar ni desactivar la tienda mientras exista una sesión de ${blockingSessionType} abierta.`
+    ? t('toggleBlockedSession', { type: blockingSessionType })
     : null;
+
+  const TOGGLE_MESSAGES: Record<StoreToggleAction, string> = {
+    [StoreToggleAction.ACTIVATED_NEW]: t('toggleActivated'),
+    [StoreToggleAction.ACTIVATED_WITH_MAINTENANCE_REQUEST]: t('toggleActivatedMaintenance'),
+    [StoreToggleAction.MAINTENANCE_ALREADY_OPEN]: t('toggleMaintenanceOpen'),
+    [StoreToggleAction.MAINTENANCE_REQUEST_CREATED]: t('toggleMaintenanceCreated'),
+    [StoreToggleAction.CLOSED]: t('toggleClosed'),
+  };
 
   const executeToggle = async (newActive: boolean) => {
     setIsLoading(true);
@@ -619,8 +617,19 @@ export function StoreToggle({
       });
 
       if (!result.success) {
-        toast.error(result.error ?? 'Error al cambiar estado');
+        toast.error(result.error ?? t('toggleError'));
         return;
+      }
+
+      // After maintenance request created/exists, set device contract to 0
+      console.log('[StoreToggle] actionTaken:', result.actionTaken);
+      if (
+        result.actionTaken === StoreToggleAction.MAINTENANCE_REQUEST_CREATED ||
+        result.actionTaken === StoreToggleAction.MAINTENANCE_ALREADY_OPEN
+      ) {
+        console.log('[StoreToggle] Setting devices to 0...');
+        const devResult = await updateStoreDevicesAction(storeId, 0);
+        console.log('[StoreToggle] updateStoreDevices result:', devResult);
       }
 
       setActive(newActive);
@@ -628,8 +637,8 @@ export function StoreToggle({
       const msg = result.actionTaken
         ? TOGGLE_MESSAGES[result.actionTaken]
         : newActive
-        ? 'Tienda activada'
-        : 'Tienda desactivada';
+        ? t('toggleStoreActivated')
+        : t('toggleStoreDeactivated');
 
       if (
         result.actionTaken === StoreToggleAction.ACTIVATED_WITH_MAINTENANCE_REQUEST ||
@@ -637,7 +646,7 @@ export function StoreToggle({
       ) {
         toast.success(msg, {
           description: result.maintenanceRequestId
-            ? `Solicitud: ${result.maintenanceRequestId}`
+            ? t('toggleRequest', { id: result.maintenanceRequestId })
             : undefined,
         });
       } else {
@@ -652,12 +661,11 @@ export function StoreToggle({
 
   const handleToggle = () => {
     if (hasOpenSession) {
-      toast.error(blockedByOpenSessionMessage ?? 'Existe una sesión abierta en esta tienda');
+      toast.error(blockedByOpenSessionMessage ?? t('toggleOpenSessionError'));
       return;
     }
 
     if (active) {
-      setInstallerMessage('');
       setUnderstoodCheckbox(false);
       setShowDeactivateModal(true);
       return;
@@ -670,12 +678,12 @@ export function StoreToggle({
     await executeToggle(false);
   };
 
-  const canConfirm = !hasDevices || (installerMessage.trim().length > 0 && understoodCheckbox);
+  const canConfirm = !hasDevices || understoodCheckbox;
 
   return (
     <>
       <div className="flex items-center gap-3">
-        <span className="text-[13px] text-[#667085]">{active ? 'Activa' : 'Inactiva'}</span>
+        <span className="text-[13px] text-[#667085]">{active ? t('active') : t('inactive')}</span>
         <button
           onClick={handleToggle}
           disabled={isLoading || hasOpenSession}
@@ -683,7 +691,7 @@ export function StoreToggle({
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
             active ? 'bg-[#228D70]' : 'bg-[#D0D5DD]'
           }`}
-          aria-label={active ? 'Desactivar tienda' : 'Activar tienda'}
+          aria-label={active ? t('toggleDeactivateLabel') : t('toggleActivateLabel')}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
@@ -702,7 +710,7 @@ export function StoreToggle({
           <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">
-                {hasDevices ? 'Iniciar cierre de tienda' : 'Desactivar tienda'}
+                {hasDevices ? t('toggleStartClose') : t('toggleDeactivate')}
               </h3>
               <button
                 onClick={() => setShowDeactivateModal(false)}
@@ -714,22 +722,12 @@ export function StoreToggle({
 
             {hasDevices ? (
               <>
-                <p className="text-[14px] text-[#667085] mb-5">
-                  Esta tienda tiene <strong className="text-[#191919]">{installedDevicesCount}</strong> dispositivo(s) instalado(s). Se creará una solicitud de mantenimiento para que el instalador retire los equipos. El cierre definitivo ocurrirá cuando complete el mantenimiento.
-                </p>
-
-                <div className="mb-4">
-                  <label className="block text-[13px] text-[#667085] mb-1">
-                    Mensaje para el instalador <span className="text-[#DC2626]">*</span>
-                  </label>
-                  <textarea
-                    value={installerMessage}
-                    onChange={(e) => setInstallerMessage(e.target.value)}
-                    placeholder="Describe la acción que debe llevar a cabo el instalador..."
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-[8px] border border-[#D0D5DD] text-[14px] text-[#191919] focus:border-[#DC2626] focus:outline-none resize-none"
-                  />
-                </div>
+                <p
+                  className="text-[14px] text-[#667085] mb-5"
+                  dangerouslySetInnerHTML={{
+                    __html: t.raw('toggleDevicesWarning').replace('{count}', String(installedDevicesCount)),
+                  }}
+                />
 
                 <label className="flex items-start gap-3 mb-5 cursor-pointer select-none">
                   <input
@@ -739,13 +737,13 @@ export function StoreToggle({
                     className="mt-0.5 w-4 h-4 flex-shrink-0 accent-[#DC2626]"
                   />
                   <span className="text-[13px] text-[#667085]">
-                    Entiendo que el número de dispositivos autorizados se llevará a 0 al confirmar el cierre definitivo, y que este ocurre cuando el instalador retire los dispositivos.
+                    {t('toggleUnderstoodCheckbox')}
                   </span>
                 </label>
               </>
             ) : (
               <p className="text-[14px] text-[#667085] mb-5">
-                Esta tienda ya no será visible para los instaladores en la app de instaladores. ¿Deseas continuar?
+                {t('toggleNoDevicesWarning')}
               </p>
             )}
 
@@ -755,13 +753,13 @@ export function StoreToggle({
                 disabled={isLoading || !canConfirm}
                 className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] disabled:opacity-50 transition-colors cursor-pointer"
               >
-                {isLoading ? 'Procesando...' : hasDevices ? 'Iniciar cierre' : 'Desactivar'}
+                {isLoading ? t('toggleProcessing') : hasDevices ? t('toggleStartCloseBtn') : t('toggleDeactivateBtn')}
               </button>
               <button
                 onClick={() => setShowDeactivateModal(false)}
                 className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] transition-colors cursor-pointer"
               >
-                Cancelar
+                {t('toggleCancel')}
               </button>
             </div>
           </div>

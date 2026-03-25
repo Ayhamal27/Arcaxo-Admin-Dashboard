@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { Phone, Map, X, Copy } from 'lucide-react';
 
 interface StoreContactActionsProps {
@@ -12,13 +13,14 @@ interface StoreContactActionsProps {
 
 export function StoreContactActions({ phone, address, googleMapsUrl }: StoreContactActionsProps) {
   const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const t = useTranslations('storeDetail');
 
   const handleCopy = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success(`${label} copiado`);
+      toast.success(t('contactCopied', { label }));
     } catch {
-      toast.error('No se pudo copiar');
+      toast.error(t('contactCopyError'));
     }
   };
 
@@ -37,7 +39,7 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
       <button
         onClick={() => setShowPhoneModal(true)}
         className="flex items-center justify-center w-[40px] h-[40px] rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] hover:border-[#0000FF] transition-colors cursor-pointer bg-white"
-        title="Datos de contacto"
+        title={t('contactPhoneTitle')}
       >
         <Phone className="w-4 h-4 text-[#0000FF]" />
       </button>
@@ -46,7 +48,7 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
       <button
         onClick={handleMapsClick}
         className="flex items-center justify-center w-[40px] h-[40px] rounded-[8px] border border-[#E5E5EA] hover:bg-[#F0FFF5] hover:border-[#228D70] transition-colors cursor-pointer bg-white"
-        title="Abrir en Google Maps"
+        title={t('contactMapsTitle')}
       >
         <Map className="w-4 h-4 text-[#228D70]" />
       </button>
@@ -56,7 +58,7 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[15px] p-6 max-w-[400px] w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[18px] font-semibold text-[#191919]">Datos de contacto</h3>
+              <h3 className="text-[18px] font-semibold text-[#191919]">{t('contactTitle')}</h3>
               <button onClick={() => setShowPhoneModal(false)} className="cursor-pointer">
                 <X className="w-5 h-5 text-[#667085]" />
               </button>
@@ -66,11 +68,11 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
               {phone && (
                 <div className="flex items-center justify-between p-3 rounded-[8px] border border-[#E5E5EA]">
                   <div>
-                    <p className="text-[11px] text-[#667085]">Teléfono</p>
+                    <p className="text-[11px] text-[#667085]">{t('contactPhone')}</p>
                     <p className="text-[14px] font-medium text-[#191919]">{phone}</p>
                   </div>
                   <button
-                    onClick={() => handleCopy(phone, 'Teléfono')}
+                    onClick={() => handleCopy(phone, t('contactPhone'))}
                     className="p-2 rounded-[6px] hover:bg-[#F0F0F5] transition-colors cursor-pointer"
                   >
                     <Copy className="w-4 h-4 text-[#667085]" />
@@ -80,11 +82,11 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
 
               <div className="flex items-center justify-between p-3 rounded-[8px] border border-[#E5E5EA]">
                 <div className="flex-1 min-w-0 mr-2">
-                  <p className="text-[11px] text-[#667085]">Dirección</p>
+                  <p className="text-[11px] text-[#667085]">{t('contactAddress')}</p>
                   <p className="text-[14px] font-medium text-[#191919]">{address}</p>
                 </div>
                 <button
-                  onClick={() => handleCopy(address, 'Dirección')}
+                  onClick={() => handleCopy(address, t('contactAddress'))}
                   className="p-2 rounded-[6px] hover:bg-[#F0F0F5] transition-colors cursor-pointer flex-shrink-0"
                 >
                   <Copy className="w-4 h-4 text-[#667085]" />
@@ -93,7 +95,7 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
 
               {!phone && (
                 <p className="text-[13px] text-[#667085] text-center py-2">
-                  No hay teléfono registrado
+                  {t('contactNoPhone')}
                 </p>
               )}
             </div>
@@ -102,7 +104,7 @@ export function StoreContactActions({ phone, address, googleMapsUrl }: StoreCont
               onClick={() => setShowPhoneModal(false)}
               className="w-full mt-4 h-[40px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
             >
-              Cerrar
+              {t('contactClose')}
             </button>
           </div>
         </div>

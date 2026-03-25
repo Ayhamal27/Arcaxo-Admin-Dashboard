@@ -2,17 +2,18 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { TooltipHint } from '@/components/shared/TooltipHint';
 import { listStoreSessionsAction } from '@/actions/stores/list-store-sessions';
 import { listStoreDevicesAction } from '@/actions/stores/list-store-devices';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
-import { format, isValid } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, isValid, type Locale } from 'date-fns';
+import { es, enUS } from 'date-fns/locale';
 
-function safeFormat(date: string | null | undefined, fmt: string) {
+function safeFormat(date: string | null | undefined, fmt: string, dateLocale: Locale) {
   if (!date) return '—';
   const d = new Date(date);
-  return isValid(d) ? format(d, fmt, { locale: es }) : '—';
+  return isValid(d) ? format(d, fmt, { locale: dateLocale }) : '—';
 }
 
 interface StoreTabsClientProps {
@@ -20,8 +21,10 @@ interface StoreTabsClientProps {
   locale: string;
 }
 
-export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientProps) {
+export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
   const [activeTab, setActiveTab] = useState<'sessions' | 'devices'>('sessions');
+  const t = useTranslations('storeDetail');
+  const dateLocale = locale === 'en' ? enUS : es;
 
   const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
     queryKey: ['store-sessions', storeId],
@@ -50,7 +53,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
               : 'text-[#667085] hover:text-[#191919]'
           }`}
         >
-          Sesiones
+          {t('tabSessions')}
         </button>
         <button
           onClick={() => setActiveTab('devices')}
@@ -60,7 +63,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
               : 'text-[#667085] hover:text-[#191919]'
           }`}
         >
-          Dispositivos
+          {t('tabDevices')}
         </button>
       </div>
 
@@ -71,20 +74,20 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
             <TableSkeleton rows={5} columns={5} />
           ) : sessions.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-[14px] text-[#667085]">No hay sesiones registradas</p>
+              <p className="text-[14px] text-[#667085]">{t('noSessions')}</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-[#F9F9F9]">
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Tipo</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Estado</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Instalador</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Apertura</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableType')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableStatus')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableInstaller')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableOpened')}</th>
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">
                     <span className="flex items-center gap-1">
-                      Dispositivos
-                      <TooltipHint text="Instalados al abrir / Total requeridos" />
+                      {t('devices')}
+                      <TooltipHint text={t('tableDevicesTooltip')} />
                     </span>
                   </th>
                 </tr>
@@ -96,6 +99,8 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[12px] font-medium ${
                         s.status === 'open'
+                          ? 'bg-[#FFF9E6] text-[#8B7200]'
+                          : s.status === 'completed'
                           ? 'bg-[#E6F9F1] text-[#228D70]'
                           : s.status === 'closed'
                           ? 'bg-[#F5F5F5] text-[#667085]'
@@ -106,7 +111,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
                     </td>
                     <td className="px-6 py-4 text-[14px] text-[#667085]">{s.installer_name ?? '—'}</td>
                     <td className="px-6 py-4 text-[14px] text-[#667085]">
-                      {safeFormat(s.opened_at, 'd MMM yyyy')}
+                      {safeFormat(s.opened_at, 'd MMM yyyy', dateLocale)}
                     </td>
                     <td className="px-6 py-4 text-[14px] text-[#191919]">
                       {s.installed_devices_at_open} / {s.required_devices_count}
@@ -126,16 +131,16 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
             <TableSkeleton rows={5} columns={4} />
           ) : devices.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-[14px] text-[#667085]">No hay dispositivos registrados</p>
+              <p className="text-[14px] text-[#667085]">{t('noDevices')}</p>
             </div>
           ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-[#F9F9F9]">
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Serial</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">MAC</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Estado</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">Instalado</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableSerial')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableMac')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableStatus')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableInstalled')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,7 +160,7 @@ export function StoreTabsClient({ storeId, locale: _locale }: StoreTabsClientPro
                       </span>
                     </td>
                     <td className="px-6 py-4 text-[14px] text-[#667085]">
-                      {safeFormat(d.installed_at, 'd MMM yyyy')}
+                      {safeFormat(d.installed_at, 'd MMM yyyy', dateLocale)}
                     </td>
                   </tr>
                 ))}

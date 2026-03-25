@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getStoreDetailAction } from '@/actions/stores/get-store';
 import { getFacadeSignedUrlAction } from '@/actions/stores/get-facade-signed-url';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
@@ -14,6 +15,7 @@ interface StoreDetailPageProps {
 
 export default async function StoreDetailPage({ params }: StoreDetailPageProps) {
   const { locale, storeId } = await params;
+  const t = await getTranslations('storeDetail');
 
   let store;
   try {
@@ -45,7 +47,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
         <Breadcrumb
           locale={locale}
           items={[
-            { label: 'Tiendas', href: `/${locale}/stores` },
+            { label: t('breadcrumbStores'), href: `/${locale}/stores` },
             { label: store.name },
           ]}
           className="mb-0"
@@ -57,7 +59,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
             className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors cursor-pointer"
           >
             <Pencil className="w-4 h-4" />
-            Editar
+            {t('edit')}
           </Link>
 
           <StoreToggle
@@ -82,15 +84,15 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               href={`/${locale}/stores`}
               className="text-[14px] text-[#0000FF] hover:underline"
             >
-              ← Volver a tiendas
+              {t('backToStores')}
             </Link>
           </div>
         </div>
 
         {/* Right column: sticky, stretches to bottom of viewport */}
-        <div className="lg:sticky lg:top-[104px] lg:h-[calc(100vh-128px)] flex flex-col gap-5 min-h-0 flex-1">
+        <div className="lg:sticky lg:top-[104px] flex flex-col gap-5">
           {/* Store info + stats card (unified) */}
-          <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden flex-1 flex flex-col">
+          <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden flex flex-col">
             {/* Facade photo — 24vh banner */}
             <div className="relative w-full flex flex-col justify-end" style={{ height: '24vh' }}>
               {facadeDisplayUrl ? (
@@ -109,11 +111,11 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
                 <div className="relative z-10 flex justify-end" style={{ paddingRight: '16px', paddingBottom: '16px' }}>
                   <div className="px-3 py-2.5 bg-[#FFF9E6] border border-[#FADC45] rounded-[8px] text-right">
                     <p className="text-[12px] font-medium text-[#8B7200]">
-                      Sesión abierta: {store.open_session_type}
+                      {t('openSession', { type: store.open_session_type ?? '' })}
                     </p>
                     {store.open_session_installer_name && (
                       <p className="text-[11px] text-[#8B7200]">
-                        Instalador: {store.open_session_installer_name}
+                        {t('installer', { name: store.open_session_installer_name })}
                       </p>
                     )}
                   </div>
@@ -121,7 +123,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               )}
             </div>
 
-            <div className="px-5 pt-4 pb-5 flex flex-col flex-1">
+            <div className="px-5 pt-4 pb-5 flex flex-col">
               <div className="flex items-center gap-2.5 mb-2">
                 <StatusDot status={store.status} />
                 <h1 className="text-[18px] font-semibold text-[#191919] leading-tight">
@@ -150,7 +152,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               <div className="flex items-center gap-2.5">
                 <Cpu className="w-4 h-4 text-[#82A2C2] flex-shrink-0" />
                 <div>
-                  <p className="text-[11px] text-[#667085]">Dispositivos</p>
+                  <p className="text-[11px] text-[#667085]">{t('devices')}</p>
                   <p className="text-[15px] font-semibold text-[#191919]">
                     {store.installed_devices_count ?? 0} / {store.authorized_devices_count}
                   </p>
@@ -160,7 +162,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               <div className="flex items-center gap-2.5">
                 <Calendar className="w-4 h-4 text-[#82A2C2] flex-shrink-0" />
                 <div>
-                  <p className="text-[11px] text-[#667085]">Sesiones</p>
+                  <p className="text-[11px] text-[#667085]">{t('sessions')}</p>
                   <p className="text-[15px] font-semibold text-[#191919]">
                     {store.total_sessions_count ?? 0}
                   </p>
@@ -171,7 +173,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               <div className="flex items-center gap-2.5">
                 <Users className="w-4 h-4 text-[#82A2C2] flex-shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-[11px] text-[#667085]">Responsable</p>
+                  <p className="text-[11px] text-[#667085]">{t('responsible')}</p>
                   <p className="text-[13px] font-medium text-[#191919] truncate">
                     {responsibleName || '—'}
                   </p>
@@ -188,7 +190,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
             </div>
 
 {/* Action buttons: WiFi, Devices, Facade — pushed to bottom */}
-              <div className="mt-auto pt-2">
+              <div className="pt-2">
                 <StoreDetailClient
                   storeId={storeId}
                   initialActive={store.active}

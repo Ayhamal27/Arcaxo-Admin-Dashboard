@@ -1,6 +1,9 @@
 'use server';
 
-import { rpcAdminGetStoreDetail, rpcAdminToggleStoreActive } from '@/lib/supabase/rpc';
+import {
+  rpcAdminGetStoreDetail,
+  rpcAdminToggleStoreActive,
+} from '@/lib/supabase/rpc';
 import { StoreToggleAction } from '@/types/database';
 
 export interface ToggleStoreActiveInput {
@@ -40,11 +43,17 @@ export async function toggleStoreActiveAction(
       };
     }
 
-    const result = await rpcAdminToggleStoreActive({
+    const raw = await rpcAdminToggleStoreActive({
       p_store_id: input.storeId,
       p_active: input.active,
       p_required_devices_count: input.requiredDevicesCount,
     });
+
+    console.log('[toggleStoreActive] raw RPC result:', JSON.stringify(raw));
+
+    const result = Array.isArray(raw) ? raw[0] : raw;
+
+    console.log('[toggleStoreActive] parsed result:', JSON.stringify(result));
 
     if (result.error || result.result === false) {
       return { success: false, error: result.error ?? 'Error al cambiar estado de la tienda' };
