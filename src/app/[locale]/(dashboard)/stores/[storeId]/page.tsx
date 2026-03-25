@@ -41,9 +41,9 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
   const facadeDisplayUrl = await getFacadeSignedUrlAction(store.facade_photo_url ?? null);
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 128px)' }}>
       {/* Breadcrumb + Toggle top-right */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <Breadcrumb
           locale={locale}
           items={[
@@ -75,16 +75,16 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
       </div>
 
       {/* 2-column layout: Tabs (2/3) | Info + Stats (1/3 sticky) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start flex-1 min-h-0">
         {/* Left: Tabs — sessions + devices */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
           <StoreTabsClient storeId={storeId} locale={locale} />
 
-          {/* Back link below tabs */}
-          <div className="mt-4">
+          {/* Back to stores — pinned at bottom */}
+          <div className="flex-shrink-0 mt-auto pt-4 pb-2">
             <Link
               href={`/${locale}/stores`}
-              className="text-[14px] text-[#0000FF] hover:underline"
+              className="text-[14px] font-medium text-[#667085] hover:text-[#0000FF] transition-colors"
             >
               {t('backToStores')}
             </Link>

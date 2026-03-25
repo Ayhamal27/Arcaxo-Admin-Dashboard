@@ -42,9 +42,9 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
   const devices = devicesData?.devices ?? [];
 
   return (
-    <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden">
+    <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden flex flex-col flex-1 min-h-0">
       {/* Tab headers */}
-      <div className="flex border-b border-[#E5E5EA]">
+      <div className="flex border-b border-[#E5E5EA] flex-shrink-0">
         <button
           onClick={() => setActiveTab('sessions')}
           className={`px-6 py-4 text-[14px] font-medium transition-colors ${
@@ -69,7 +69,7 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
 
       {/* Sessions tab */}
       {activeTab === 'sessions' && (
-        <div>
+        <div className="overflow-y-auto flex-1 min-h-0">
           {sessionsLoading ? (
             <TableSkeleton rows={5} columns={5} />
           ) : sessions.length === 0 ? (
@@ -79,12 +79,12 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="bg-[#F9F9F9]">
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableType')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableStatus')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableInstaller')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableOpened')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">
+                <tr className="bg-[#F9F9F9] sticky top-0 z-10">
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableType')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableStatus')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableInstaller')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableOpened')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">
                     <span className="flex items-center gap-1">
                       {t('devices')}
                       <TooltipHint text={t('tableDevicesTooltip')} />
@@ -126,7 +126,7 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
 
       {/* Devices tab */}
       {activeTab === 'devices' && (
-        <div>
+        <div className="overflow-y-auto flex-1 min-h-0">
           {devicesLoading ? (
             <TableSkeleton rows={5} columns={4} />
           ) : devices.length === 0 ? (
@@ -136,11 +136,11 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="bg-[#F9F9F9]">
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableSerial')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableMac')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableStatus')}</th>
-                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider">{t('tableInstalled')}</th>
+                <tr className="bg-[#F9F9F9] sticky top-0 z-10">
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableSerial')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableMac')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableStatus')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableInstalled')}</th>
                 </tr>
               </thead>
               <tbody>
