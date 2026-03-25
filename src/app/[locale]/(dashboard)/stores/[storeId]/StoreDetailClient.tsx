@@ -10,9 +10,10 @@ import { updateStoreWifiAction } from '@/actions/stores/update-store-wifi';
 import { updateStoreDevicesAction } from '@/actions/stores/update-store-devices';
 import { uploadFacadePhotoAction } from '@/actions/stores/upload-facade-photo';
 import { getWifiCredentialsAction } from '@/actions/stores/get-wifi-credentials';
+import { openMaintenanceAction } from '@/actions/stores/maintenance';
 import { useSidebarStore } from '@/lib/stores/sidebar-store';
-import { StoreToggleAction } from '@/types/database';
-import { Wifi, Cpu, Camera, X, Upload, Pencil, Eye, EyeOff } from 'lucide-react';
+import { MaintenanceRequestCause, StoreToggleAction } from '@/types/database';
+import { Wifi, Cpu, Camera, X, Upload, Pencil, Eye, EyeOff, Wrench } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -765,6 +766,132 @@ export function StoreToggle({
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+/* ─── Maintenance button + modal for header ─────────────────────────────── */
+
+export function MaintenanceButton({
+  storeId,
+  storeStatus,
+}: {
+  storeId: string;
+  storeStatus: string;
+}) {
+  const [showModal, setShowModal] = useState(false);
+  const [reason, setReason] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const sidebarCollapsed = useSidebarStore((s) => s.collapsed);
+  const isDesktop = useIsDesktop();
+  const overlayLeft = isDesktop ? (sidebarCollapsed ? 72 : 317) : 0;
+  const t = useTranslations('storeDetail');
+
+  // Only show for operational stores
+  if (storeStatus !== 'operational') return null;
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) {
+      toast.error(t('maintenanceReasonRequired'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await openMaintenanceAction({
+        storeId,
+        cause: MaintenanceRequestCause.ADMIN_MANUAL,
+        reason: reason.trim(),
+      });
+
+      if (!result.success) {
+        toast.error(result.error ?? t('maintenanceError'));
+        return;
+      }
+
+      toast.success(t('maintenanceSuccess'), {
+        description: result.maintenanceRequestId
+          ? t('toggleRequest', { id: result.maintenanceRequestId })
+          : undefined,
+      });
+      setShowModal(false);
+      setReason('');
+      router.refresh();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#D97706] border border-[#D97706] rounded-[8px] hover:bg-[#FFFBEB] transition-colors cursor-pointer"
+      >
+        <Wrench className="w-4 h-4" />
+        {t('maintenance')}
+      </button>
+
+      {showModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            style={{ left: overlayLeft, padding: 16 }}
+          >
+            <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[18px] font-semibold text-[#191919]">
+                  {t('maintenanceModalTitle')}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setReason('');
+                  }}
+                  className="cursor-pointer"
+                >
+                  <X className="w-5 h-5 text-[#667085]" />
+                </button>
+              </div>
+
+              <p className="text-[14px] text-[#667085] mb-5">
+                {t('maintenanceModalDescription')}
+              </p>
+
+              <div className="mb-5">
+                <p className="text-[13px] text-[#667085] mb-1">{t('maintenanceReason')}</p>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder={t('maintenanceReasonPlaceholder')}
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-[8px] border border-[#D0D5DD] text-[14px] text-[#191919] focus:border-[#D97706] focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setReason('');
+                  }}
+                  className="flex-1 h-[44px] text-[14px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[8px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
+                >
+                  {t('maintenanceCancel')}
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading || !reason.trim()}
+                  className="flex-1 h-[44px] text-[14px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  {isLoading ? t('maintenanceCreating') : t('maintenanceCreate')}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }

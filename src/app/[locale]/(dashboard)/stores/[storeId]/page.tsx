@@ -6,7 +6,7 @@ import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { StatusDot } from '@/components/shared/DataTable';
 import { MapPin, Cpu, Calendar, Users, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import { StoreDetailClient, StoreToggle } from './StoreDetailClient';
+import { StoreDetailClient, StoreToggle, MaintenanceButton } from './StoreDetailClient';
 import { StoreContactActions } from './StoreContactActions';
 
 interface StoreDetailPageProps {
@@ -54,6 +54,8 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
         />
 
         <div className="flex items-center gap-3">
+          <MaintenanceButton storeId={storeId} storeStatus={store.status} />
+
           <Link
             href={`/${locale}/stores/${storeId}/edit`}
             className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors cursor-pointer"

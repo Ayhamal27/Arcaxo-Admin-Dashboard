@@ -210,7 +210,19 @@
     "contactCopied": "{label} copiado",
     "contactCopyError": "No se pudo copiar",
     "contactPhoneTitle": "Datos de contacto",
-    "contactMapsTitle": "Abrir en Google Maps"
+    "contactMapsTitle": "Abrir en Google Maps",
+    "maintenance": "Mantenimiento",
+    "maintenanceModalTitle": "Crear solicitud de mantenimiento",
+    "maintenanceModalDescription": "Se abrirá una solicitud de mantenimiento para esta tienda. El instalador asignado podrá iniciar una sesión de mantenimiento desde la app.",
+    "maintenanceReason": "Razón del mantenimiento",
+    "maintenanceReasonPlaceholder": "Describe el motivo del mantenimiento...",
+    "maintenanceReasonRequired": "La razón es requerida",
+    "maintenanceCancel": "Cancelar",
+    "maintenanceCreating": "Creando...",
+    "maintenanceCreate": "Crear solicitud",
+    "maintenanceSuccess": "Solicitud de mantenimiento creada",
+    "maintenanceError": "Error al crear solicitud de mantenimiento",
+    "maintenanceAlreadyOpen": "Ya existe una solicitud de mantenimiento abierta para esta tienda"
   },
   "users": {
     "title": "Usuarios",

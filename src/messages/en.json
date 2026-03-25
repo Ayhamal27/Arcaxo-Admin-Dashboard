@@ -210,7 +210,19 @@
     "contactCopied": "{label} copied",
     "contactCopyError": "Could not copy",
     "contactPhoneTitle": "Contact details",
-    "contactMapsTitle": "Open in Google Maps"
+    "contactMapsTitle": "Open in Google Maps",
+    "maintenance": "Maintenance",
+    "maintenanceModalTitle": "Create maintenance request",
+    "maintenanceModalDescription": "A maintenance request will be opened for this store. The assigned installer will be able to start a maintenance session from the app.",
+    "maintenanceReason": "Maintenance reason",
+    "maintenanceReasonPlaceholder": "Describe the reason for maintenance...",
+    "maintenanceReasonRequired": "Reason is required",
+    "maintenanceCancel": "Cancel",
+    "maintenanceCreating": "Creating...",
+    "maintenanceCreate": "Create request",
+    "maintenanceSuccess": "Maintenance request created",
+    "maintenanceError": "Error creating maintenance request",
+    "maintenanceAlreadyOpen": "A maintenance request is already open for this store"
   },
   "users": {
     "title": "Users",
