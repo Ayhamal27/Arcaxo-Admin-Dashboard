@@ -67,7 +67,7 @@ export function Sidebar({ locale, open = true, onClose }: SidebarProps) {
       {/* Mobile overlay */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/30 z-30 lg:hidden"
+          className="arcaxo-overlay-enter fixed inset-0 bg-black/30 z-30 lg:hidden"
           onClick={onClose}
         />
       )}
@@ -76,7 +76,7 @@ export function Sidebar({ locale, open = true, onClose }: SidebarProps) {
       <aside
         className={cn(
           'fixed left-0 top-[80px] bottom-0 bg-white border-r border-[#E2DFDF] z-40',
-          'flex flex-col overflow-y-auto transition-all duration-300',
+          'flex flex-col overflow-y-auto transition-[transform,width] duration-300 ease-out-quart',
           'lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'w-[72px]' : 'w-[317px]'
@@ -119,7 +119,7 @@ export function Sidebar({ locale, open = true, onClose }: SidebarProps) {
           <button
             onClick={toggleCollapsed}
             className={cn(
-              'flex items-center w-full py-2.5 relative transition-colors mt-1',
+              'arcaxo-pressable flex items-center w-full py-2.5 relative mt-1',
               'text-[15px] leading-tight text-[#191919] font-normal hover:bg-[#F5F5FF]',
               collapsed ? 'justify-center px-0' : 'gap-[25px] px-6'
             )}

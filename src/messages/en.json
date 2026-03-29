@@ -312,6 +312,9 @@
     "loadingMap": "Loading map...",
     "noApiKey": "API Key not configured",
     "noApiKeyDesc": "Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your environment variables",
-    "legend": "Legend"
+    "legend": "Legend",
+    "sensors": "Sensors",
+    "noSensors": "No sensors registered",
+    "noVisits": "No visits recorded"
   }
 }

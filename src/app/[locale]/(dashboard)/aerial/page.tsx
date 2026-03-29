@@ -6,10 +6,12 @@ import { useTranslations } from 'next-intl';
 import { APIProvider, Map, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { mapListStoresAction, mapStoreClustersAction } from '@/actions/stores/map-stores';
+import { listStoreDevicesAction } from '@/actions/stores/list-store-devices';
+import { listStoreSessionsAction } from '@/actions/stores/list-store-sessions';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { SearchInput, FilterSelect, ResetButton } from '@/components/layout/PageActionBar';
 import type { RpcAdminMapStoreClustersOutputItem } from '@/types/rpc-outputs';
-import { MapPin, X, Search, ArrowUpDown, RotateCcw } from 'lucide-react';
+import { MapPin, Search, ArrowUpDown, RotateCcw, Cpu, User, Calendar, X } from 'lucide-react';
 import Link from 'next/link';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -28,6 +30,31 @@ const STATUS_COLOR: Record<string, string> = {
 
 function getStatusColor(status: string): string {
   return STATUS_COLOR[status] ?? '#667085';
+}
+
+// ─── Sensor status colors ─────────────────────────────────────────────────────
+
+const SENSOR_STATUS_COLOR: Record<string, string> = {
+  active: '#228D70',
+  installed: '#228D70',
+  operational: '#228D70',
+  inactive: '#FF4163',
+  uninstalled: '#FF4163',
+  failed: '#FF4163',
+  maintenance: '#F59E0B',
+  connecting: '#667085',
+};
+
+function getSensorStatusColor(status: string): string {
+  return SENSOR_STATUS_COLOR[status] ?? '#667085';
+}
+
+function formatVisitDate(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-VE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 // ─── SVG marker icon builder (cached) ────────────────────────────────────────
@@ -439,6 +466,23 @@ export default function AerialViewPage({
     staleTime: 60_000,
   });
 
+  // ── Popup detail: sensors + last session (fires when a store is selected) ─
+  const { data: popupDetail, isLoading: popupLoading } = useQuery({
+    queryKey: ['aerial-popup', selectedStore?.store_id],
+    queryFn: async () => {
+      const [devicesResult, sessionsResult] = await Promise.all([
+        listStoreDevicesAction({ storeId: selectedStore!.store_id, pageSize: 5 }),
+        listStoreSessionsAction({ storeId: selectedStore!.store_id, pageSize: 1 }),
+      ]);
+      return {
+        devices: devicesResult.devices,
+        lastSession: sessionsResult.sessions[0] ?? null,
+      };
+    },
+    enabled: !!selectedStore,
+    staleTime: 30_000,
+  });
+
   // ── Derive display data ─────────────────────────────────────────────────
 
   const isLoading = isClusterMode && !search ? clusterLoading : markerLoading;
@@ -528,7 +572,7 @@ export default function AerialViewPage({
       {/* Map + Sidebar */}
       <div className="flex gap-[20px]" style={{ height: 'calc(100vh - 220px)' }}>
         {/* Map card */}
-        <div className="flex-1 min-w-0 rounded-[15px] overflow-hidden border border-[#E5E5EA] bg-white">
+        <div className="arcaxo-map-enter flex-1 min-w-0 rounded-[15px] overflow-hidden border border-[#E5E5EA] bg-white">
           {!MAPS_API_KEY ? (
             <div className="w-full h-full bg-[#F5F5F5] flex items-center justify-center">
               <div className="text-center px-8">
@@ -562,45 +606,78 @@ export default function AerialViewPage({
                   <InfoWindow
                     position={{ lat: selectedStore.lat, lng: selectedStore.lng }}
                     onCloseClick={() => setSelectedStore(null)}
+                    headerDisabled
                   >
-                    <div className="p-2 min-w-[200px]">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-[14px] font-semibold text-[#191919] leading-tight">
-                          {selectedStore.name}
-                        </p>
-                        <button
-                          onClick={() => setSelectedStore(null)}
-                          className="text-[#667085] hover:text-[#191919] flex-shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                    {/* headerDisabled removes the blank native header — we own the full space */}
+                    <div className="arcaxo-infowindow-content p-[16px] min-w-[240px] max-w-[280px]">
 
-                      <p className="text-[12px] text-[#667085] mb-1">
-                        {selectedStore.city_name}
-                        {selectedStore.state_name ? `, ${selectedStore.state_name}` : ''}
-                      </p>
-
-                      <div className="flex items-center gap-1.5 mb-3">
+                      {/* Header row: dot + name + close */}
+                      <div className="flex items-center gap-[10px] mb-[14px]">
                         <div
                           className="w-[8px] h-[8px] rounded-full flex-shrink-0"
                           style={{ backgroundColor: getStatusColor(selectedStore.status) }}
                         />
-                        <span className="text-[12px] text-[#667085]">
-                          {tStores(`statuses.${selectedStore.status}`)}
-                        </span>
+                        <p className="text-[13px] font-semibold text-[#191919] flex-1 leading-snug truncate">
+                          {selectedStore.name}
+                        </p>
+                        <button
+                          onClick={() => setSelectedStore(null)}
+                          className="arcaxo-pressable flex-shrink-0 p-[4px] rounded-[4px] text-[#667085] hover:text-[#191919] hover:bg-[#F0F0F0]"
+                        >
+                          <X className="w-[13px] h-[13px]" />
+                        </button>
                       </div>
 
-                      <p className="text-[12px] text-[#667085] mb-3">
-                        {selectedStore.authorized_devices_count} {tStores('devices')}
-                      </p>
+                      <div className="h-px bg-[#F0F0F0] mb-[14px]" />
 
+                      {/* Info rows — icon + value */}
+                      <div className="space-y-[12px] mb-[16px]">
+
+                        {/* Sensors count — available immediately from map data */}
+                        <div className="flex items-center gap-[10px]">
+                          <Cpu className="w-[14px] h-[14px] text-[#82A2C2] flex-shrink-0" />
+                          <span className="text-[12px] text-[#191919]">
+                            {selectedStore.authorized_devices_count}{' '}
+                            <span className="text-[#667085]">{t('sensors').toLowerCase()}</span>
+                          </span>
+                        </div>
+
+                        {/* Last installer */}
+                        <div className="flex items-center gap-[10px]">
+                          <User className="w-[14px] h-[14px] text-[#82A2C2] flex-shrink-0" />
+                          {popupLoading ? (
+                            <div className="w-[10px] h-[10px] border border-[#0000FF] border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span className="text-[12px] text-[#191919] truncate">
+                              {popupDetail?.lastSession?.installer_name ?? '—'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Last visit date */}
+                        <div className="flex items-center gap-[10px]">
+                          <Calendar className="w-[14px] h-[14px] text-[#82A2C2] flex-shrink-0" />
+                          {popupLoading ? (
+                            <div className="w-[10px] h-[10px] border border-[#0000FF] border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span className="text-[12px] text-[#667085]">
+                              {popupDetail?.lastSession
+                                ? formatVisitDate(popupDetail.lastSession.opened_at, locale)
+                                : '—'}
+                            </span>
+                          )}
+                        </div>
+
+                      </div>
+
+                      {/* CTA */}
                       <Link
                         href={`/${locale}/stores/${selectedStore.store_id}`}
-                        className="text-[12px] text-[#0000FF] hover:underline"
+                        className="arcaxo-pressable flex items-center justify-center w-full h-[30px] bg-[#0000FF] text-white text-[12px] font-medium rounded-[7px] hover:bg-[#0000CC]"
                       >
-                        {t('viewDetail')} →
+                        {t('viewDetail')}
                       </Link>
+
                     </div>
                   </InfoWindow>
                 )}
@@ -610,7 +687,7 @@ export default function AerialViewPage({
         </div>
 
         {/* Sidebar card */}
-        <div className="w-[320px] flex-shrink-0 bg-white rounded-[15px] border border-[#E5E5EA] flex flex-col min-h-0">
+        <div className="arcaxo-sidebar-enter w-[320px] flex-shrink-0 bg-white rounded-[15px] border border-[#E5E5EA] flex flex-col min-h-0">
           {/* Header */}
           <div className="px-[20px] py-[16px] border-b border-[#E5E5EA] flex-shrink-0">
             <p className="text-[15px] font-semibold text-[#161616]">{t('storesOnMap')}</p>

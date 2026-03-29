@@ -31,7 +31,7 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
 
       {/* Main content area */}
       <main
-        className={`pt-[80px] min-h-screen flex flex-col min-w-0 transition-[padding] duration-300 ${
+        className={`pt-[80px] min-h-screen flex flex-col min-w-0 transition-[padding] duration-300 ease-out-quart ${
           collapsed ? 'lg:pl-[72px]' : 'lg:pl-[317px]'
         }`}
       >

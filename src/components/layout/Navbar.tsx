@@ -45,7 +45,7 @@ function LocaleDropdown({ locale }: { locale: string }) {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 h-[34px] px-2.5 rounded-[8px] border border-[#E5E5EA] bg-white hover:bg-[#F5F5F5] transition-colors text-[#191919] focus:outline-none"
+        className="arcaxo-pressable flex items-center gap-1.5 h-[34px] px-2.5 rounded-[8px] border border-[#E5E5EA] bg-white hover:bg-[#F5F5F5] text-[#191919] focus:outline-none"
         aria-label="Change language"
       >
         <span className="text-[18px] leading-none">{current.flag}</span>
@@ -57,7 +57,7 @@ function LocaleDropdown({ locale }: { locale: string }) {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-[calc(100%+6px)] w-[148px] bg-white rounded-[10px] shadow-[0px_4px_16px_rgba(0,0,0,0.12)] border border-[#E5E5EA] z-50 overflow-hidden">
+          <div className="arcaxo-dropdown-enter absolute right-0 top-[calc(100%+6px)] w-[148px] bg-white rounded-[10px] shadow-[0px_4px_16px_rgba(0,0,0,0.12)] border border-[#E5E5EA] z-50 overflow-hidden">
             {LOCALES.map((l) => (
               <button
                 key={l.code}
@@ -101,7 +101,7 @@ export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
       <div className="flex items-center gap-4 flex-1">
         <button
           onClick={onMenuToggle}
-          className="lg:hidden text-[#333] hover:text-[#0000FF] transition-colors p-1"
+          className="arcaxo-pressable lg:hidden text-[#333] hover:text-[#0000FF] p-1"
           aria-label="Toggle menu"
         >
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -118,7 +118,7 @@ export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
         <LocaleDropdown locale={locale} />
 
         {/* Bell */}
-        <button className="relative text-[#667085] hover:text-[#191919] transition-colors p-1">
+        <button className="arcaxo-pressable relative text-[#667085] hover:text-[#191919] p-1">
           <Bell className="w-6 h-6" />
           <span className="absolute top-0.5 right-0.5 w-[8px] h-[8px] bg-[#FF4163] rounded-full" />
         </button>
@@ -127,7 +127,7 @@ export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
         <div className="relative">
           <button
             onClick={() => setDropdownOpen((v) => !v)}
-            className="w-[35px] h-[35px] rounded-full bg-[#53009C] flex items-center justify-center text-white text-[14px] font-semibold hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#53009C] focus:ring-offset-2"
+            className="arcaxo-pressable w-[35px] h-[35px] rounded-full bg-[#53009C] flex items-center justify-center text-white text-[14px] font-semibold hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#53009C] focus:ring-offset-2"
             aria-label="User menu"
           >
             {initial}
@@ -141,7 +141,7 @@ export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
                 onClick={() => setDropdownOpen(false)}
               />
               {/* Dropdown */}
-              <div className="absolute right-0 top-[calc(100%+8px)] w-[180px] bg-white rounded-[10px] shadow-[0px_4px_16px_rgba(0,0,0,0.12)] border border-[#E5E5EA] z-50 overflow-hidden">
+              <div className="arcaxo-dropdown-enter absolute right-0 top-[calc(100%+8px)] w-[180px] bg-white rounded-[10px] shadow-[0px_4px_16px_rgba(0,0,0,0.12)] border border-[#E5E5EA] z-50 overflow-hidden">
                 <Link
                   href={`/${locale}/perfil`}
                   onClick={() => setDropdownOpen(false)}

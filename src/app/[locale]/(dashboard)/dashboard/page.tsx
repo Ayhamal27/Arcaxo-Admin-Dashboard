@@ -26,7 +26,7 @@ function ComingSoon() {
     <div className="flex-1 flex items-center justify-center bg-white rounded-[15px] border border-[#E5E5EA]">
       <div className="flex flex-col items-center gap-5 py-16 px-8 text-center max-w-[420px]">
         {/* Icon */}
-        <div className="relative">
+        <div className="arcaxo-page-icon relative">
           <div className="w-[72px] h-[72px] rounded-[18px] bg-[#F0F0FF] flex items-center justify-center">
             <LayoutDashboard className="w-8 h-8 text-[#0000FF]" />
           </div>
@@ -34,7 +34,7 @@ function ComingSoon() {
         </div>
 
         {/* Text */}
-        <div className="space-y-2">
+        <div className="arcaxo-page-text space-y-2">
           <p className="text-[20px] font-semibold text-[#191919] leading-snug">
             Sección en construcción
           </p>
@@ -44,7 +44,7 @@ function ComingSoon() {
         </div>
 
         {/* Status pill */}
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF9E6] border border-[#FADC45] text-[12px] font-medium text-[#8B7200]">
+        <span className="arcaxo-page-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF9E6] border border-[#FADC45] text-[12px] font-medium text-[#8B7200]">
           <span className="w-[6px] h-[6px] rounded-full bg-[#F59E0B]" />
           Próximamente
         </span>
