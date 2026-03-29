@@ -126,6 +126,8 @@ export interface RpcAdminListStoreSensorsOutputItem {
   is_active: boolean;
   installed_at?: string | null;
   installer_name?: string | null;
+  firmware_version?: string | null;
+  hardware_version?: string | null;
   total_count: number;
 }
 
@@ -352,6 +354,8 @@ export interface RpcAdminListSensorsOutputItem {
   installed_at?: string | null;
   last_event_date?: string | null;
   decommissioned_at?: string | null;
+  firmware_version?: string | null;
+  hardware_version?: string | null;
   total_count: number;
 }
 
@@ -390,6 +394,8 @@ export interface RpcAdminGetSensorDetailOutput {
   store_address?: string | null;
   city_name?: string | null;
   country_code?: string | null;
+  firmware_version?: string | null;
+  hardware_version?: string | null;
   created_at: string;
   updated_at: string;
   installations?: SensorInstallationHistoryItem[] | null;

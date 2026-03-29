@@ -79,6 +79,8 @@ export interface RpcAdminListStoreSensorsInput {
   p_page?: number;
   p_page_size?: number;
   p_include_historical?: boolean;
+  p_filter_firmware_version?: string | null;
+  p_filter_hardware_version?: string | null;
 }
 
 export interface RpcStoreInstallationContextUpdateInput {
@@ -271,6 +273,8 @@ export interface RpcAdminListSensorsInput {
   p_filter_is_active?: boolean | null;
   p_sort_by?: string;
   p_sort_order?: string;
+  p_filter_firmware_version?: string | null;
+  p_filter_hardware_version?: string | null;
 }
 
 export interface RpcAdminGetSensorDetailInput {

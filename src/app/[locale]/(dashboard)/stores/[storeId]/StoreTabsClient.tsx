@@ -139,6 +139,7 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
                 <tr className="bg-[#F9F9F9] sticky top-0 z-10">
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableSerial')}</th>
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableMac')}</th>
+                  <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableVersion')}</th>
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableStatus')}</th>
                   <th className="text-left px-6 py-3 text-[12px] font-semibold text-[#667085] uppercase tracking-wider bg-[#F9F9F9]">{t('tableInstalled')}</th>
                 </tr>
@@ -148,6 +149,16 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
                   <tr key={d.sensor_id} className="border-t border-[#F0F0F0] hover:bg-[#F9F9F9]">
                     <td className="px-6 py-4 text-[14px] font-medium text-[#191919]">{d.serial}</td>
                     <td className="px-6 py-4 text-[13px] text-[#667085] font-mono">{d.mac_normalized}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0F0F5] text-[#667085]">
+                          FW: {d.firmware_version ?? '-'}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0F0F5] text-[#667085]">
+                          HW: {d.hardware_version ?? '-'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[12px] font-medium ${
                         d.current_status === 'installed'

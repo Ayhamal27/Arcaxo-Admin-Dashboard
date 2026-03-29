@@ -10,6 +10,8 @@ export interface ListSensorsParams {
   filterStatus?: string[];
   filterStoreId?: string;
   filterIsActive?: boolean;
+  filterFirmwareVersion?: string;
+  filterHardwareVersion?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -28,6 +30,8 @@ export async function listSensorsAction(params: ListSensorsParams = {}): Promise
     filterStatus,
     filterStoreId,
     filterIsActive,
+    filterFirmwareVersion,
+    filterHardwareVersion,
     sortBy = 'serial',
     sortOrder = 'asc',
   } = params;
@@ -39,6 +43,8 @@ export async function listSensorsAction(params: ListSensorsParams = {}): Promise
     p_filter_status: filterStatus ?? null,
     p_filter_store_id: filterStoreId ?? null,
     p_filter_is_active: filterIsActive ?? null,
+    p_filter_firmware_version: filterFirmwareVersion ?? null,
+    p_filter_hardware_version: filterHardwareVersion ?? null,
     p_sort_by: sortBy,
     p_sort_order: sortOrder,
   });

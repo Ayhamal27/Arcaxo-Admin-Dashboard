@@ -12,6 +12,7 @@ import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { Pagination } from '@/components/shared/Pagination';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { FilterSelect } from '@/components/layout/PageActionBar';
 import { RpcAdminListSensorsOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
 import { format, isValid } from 'date-fns';
@@ -46,6 +47,14 @@ function LocationFilledIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
     </svg>
+  );
+}
+
+function VersionTag({ label, version }: { label: string; version?: string | null }) {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0F0F5] text-[#667085]">
+      {label}: {version ?? '-'}
+    </span>
   );
 }
 
@@ -167,6 +176,8 @@ export default function DispositivosPage({
         pageSize: pagination.pageSize,
         search: filters.search,
         filterIsActive: filters.filterIsActive,
+        filterFirmwareVersion: filters.filterFirmwareVersion,
+        filterHardwareVersion: filters.filterHardwareVersion,
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder,
       }),
@@ -196,11 +207,37 @@ export default function DispositivosPage({
             className="w-full h-full pl-[41px] pr-4 bg-white border border-[#D0D5DD] rounded-[10px] text-[16px] text-[#191919] placeholder:text-[#667085] focus:border-[#0000FF] focus:outline-none"
           />
         </div>
+
+        <FilterSelect
+          value={filters.filterFirmwareVersion ?? ''}
+          onChange={(e) =>
+            startTransition(() =>
+              setFilters({ filterFirmwareVersion: e.target.value || undefined })
+            )
+          }
+        >
+          <option value="">{t('filterFirmware')}: {t('allVersions')}</option>
+          <option value="v1">FW: v1</option>
+          <option value="v2">FW: v2</option>
+        </FilterSelect>
+
+        <FilterSelect
+          value={filters.filterHardwareVersion ?? ''}
+          onChange={(e) =>
+            startTransition(() =>
+              setFilters({ filterHardwareVersion: e.target.value || undefined })
+            )
+          }
+        >
+          <option value="">{t('filterHardware')}: {t('allVersions')}</option>
+          <option value="v1">HW: v1</option>
+          <option value="v2">HW: v2</option>
+        </FilterSelect>
       </div>
 
       {/* Table */}
       {isLoading ? (
-        <TableSkeleton rows={6} columns={7} />
+        <TableSkeleton rows={6} columns={8} />
       ) : isError ? (
         <div className="flex-1 bg-white rounded-[15px] border border-[#E5E5EA] flex items-center justify-center">
           <p className="text-[16px] text-[#FF4163]">{t('errorLoading')}</p>
@@ -224,6 +261,9 @@ export default function DispositivosPage({
                   </th>
                   <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[200px] min-w-[180px]">
                     {t('serialColumn')}
+                  </th>
+                  <th className="text-left px-[15px] py-[10px] text-[18px] font-semibold text-[#161616] w-[160px] min-w-[140px]">
+                    {t('firmware')} / {t('hardware')}
                   </th>
                   <th className="text-left pl-[15px] pr-[10px] py-[10px] text-[18px] font-semibold text-[#161616] w-[160px] min-w-[140px]">
                     {t('installer')}
@@ -264,9 +304,17 @@ export default function DispositivosPage({
                       </div>
                     </td>
 
+                    {/* FW / HW */}
+                    <td className="px-[15px]">
+                      <div className="flex items-center gap-1.5">
+                        <VersionTag label="FW" version={row.firmware_version} />
+                        <VersionTag label="HW" version={row.hardware_version} />
+                      </div>
+                    </td>
+
                     {/* Instalador */}
                     <td className="pl-[15px] pr-[10px]">
-                      <span className="text-[18px] text-[#404D61]">—</span>
+                      <span className="text-[18px] text-[#404D61]">{row.installer_name ?? '—'}</span>
                     </td>
 
                     {/* Tienda */}

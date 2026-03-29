@@ -12,6 +12,8 @@ erDiagram
         uuid id PK "gen_random_uuid()"
         text mac_normalized "UNIQUE — aa:bb:cc:dd:ee:ff"
         text serial "GENERATED STORED: ARXaabbccddeeff"
+        text firmware_version "DEFAULT v2; v1|v2"
+        text hardware_version "DEFAULT v2; v1|v2"
         uuid current_store_id "FK stores.id — NULL si no instalado"
         sensor_install_status current_status "DEFAULT detected"
         boolean is_active "DEFAULT true"
@@ -124,6 +126,8 @@ Identidad canónica del sensor por MAC. Un sensor existe una sola vez; sus insta
 | `id` | `uuid` | `gen_random_uuid()` | PK |
 | `mac_normalized` | `text` | Via `fn_normalize_mac` | Formato `aa:bb:cc:...` lowercase, pares separados por `:`. **UNIQUE** |
 | `serial` | `text` | **GENERATED STORED** | `'ARX' || UPPER(REPLACE(mac_normalized, ':', ''))`. No modificable. Ej: `ARXAABBCCDDEEFF` |
+| `firmware_version` | `text` | `'v2'` | Generación de firmware del sensor. Solo `v1` o `v2` |
+| `hardware_version` | `text` | `'v2'` | Generación de hardware del sensor. Solo `v1` o `v2` |
 | `current_store_id` | `uuid` | Lógica RPC | FK → `stores.id` ON DELETE SET NULL. NULL si no está instalado |
 | `current_status` | `sensor_install_status` | `'detected'` | Estado actual del ciclo de vida |
 | `is_active` | `boolean` | `true` | `false` cuando cancelado/desinstalado/decomisado |
@@ -142,6 +146,8 @@ Identidad canónica del sensor por MAC. Un sensor existe una sola vez; sus insta
 | Constraint | Regla |
 |---|---|
 | `sensors_mac_normalized_chk` | `mac_normalized ~ '^([0-9a-f]{2})(:[0-9a-f]{2}){3,}$'` — mínimo 4 pares |
+| `sensors_firmware_version_allowed_chk` | Solo `v1` o `v2` |
+| `sensors_hardware_version_allowed_chk` | Solo `v1` o `v2` |
 | `sensors_decommission_reason_allowed_chk` | Solo `stolen`, `lost`, `damaged_permanent` o NULL |
 
 ### Índices
@@ -152,6 +158,7 @@ Identidad canónica del sensor por MAC. Un sensor existe una sola vez; sus insta
 | `sensors_serial_uq` | UNIQUE | Garantiza unicidad por serial ARX |
 | `sensors_serial_prefix_idx` | btree (text_pattern_ops) | Búsqueda por prefijo de serial |
 | `sensors_mac_normalized_prefix_idx` | btree (text_pattern_ops) | Búsqueda por prefijo de MAC |
+| `sensors_firmware_hardware_idx` | btree | Filtro combinado `(firmware_version, hardware_version)` |
 | `sensors_store_status_idx` | btree | Filtro `(current_store_id, current_status)` |
 | `sensors_decommissioned_idx` | btree partial | Solo donde `decommissioned_at IS NOT NULL` |
 
@@ -246,6 +253,8 @@ El RPC principal del flujo de instalación de sensores. Maneja **upsert idempote
 | `p_error_message` | `text` | No | Para etapas `failed` |
 | `p_evidence_photo_url` | `text` | Condicional | **Obligatorio** cuando `p_stage = 'installed'` |
 | `p_ble_rssi` | `integer` | No | Señal BLE. Rango `-127..20` |
+| `p_firmware_version` | `text` | No | Si viene, debe ser `v1` o `v2` |
+| `p_hardware_version` | `text` | No | Si viene, debe ser `v1` o `v2` |
 
 **Retorna:** `sensor_id uuid`, `installation_id uuid`, `result boolean`, `error text`.
 
@@ -286,10 +295,10 @@ flowchart TD
 
 | Etapa | Qué hace en `sensors` |
 |---|---|
-| `detected`, `connecting`, `config_sending`, `config_sent` | Actualiza solo `current_status` (nunca retrocede desde `installed`/`confirming`) |
+| `detected`, `connecting`, `config_sending`, `config_sent` | Actualiza solo `current_status` (nunca retrocede desde `installed`/`confirming`) y permite actualizar `firmware_version`/`hardware_version` si se envían |
 | `failed` | **Solo log**: no cambia `current_status` del sensor |
 | `confirming` | Asigna `current_store_id = p_store_id` temporalmente |
-| `installed` | Asignación permanente: `current_store_id`, `installed_at`, `is_active = true` |
+| `installed` | Asignación permanente: `current_store_id`, `installed_at`, `is_active = true`; mantiene/actualiza versiones según parámetros |
 | `cancelled` | Si venía de `confirming`: libera `current_store_id = NULL`. Si no: solo metadatos |
 | `uninstalled` | `current_store_id = NULL`, `is_active = false`, `uninstalled_at` |
 
@@ -312,6 +321,7 @@ Para mover un sensor instalado, primero debe desvincularse con `rpc_sensor_unlin
 - No se puede `cancelled` un sensor en estado `installed`; usar `rpc_sensor_unlink`.
 - La primera etapa de una nueva instalación debe ser `detected` o `connecting`.
 - Un sensor instalado en otra tienda bloquea cualquier intento de registrarle una etapa.
+- Si se envían `p_firmware_version` o `p_hardware_version`, deben ser exactamente `v1` o `v2` (case-insensitive; el backend normaliza a minúsculas).
 
 ---
 
@@ -397,6 +407,39 @@ Si se alcanza el límite, el RPC retorna error `authorized_devices_count reached
 
 ---
 
+## RPC `rpc_sensor_list_by_store(p_store_id, p_query?, p_filter_firmware_version?, p_filter_hardware_version?)`
+
+Lista sensores actualmente asociados a una tienda, con búsqueda por serial/MAC y filtros opcionales por versión.
+
+**Permisos:** `authenticated` (`owner`, `admin`, `installer`), `service_role`.
+
+**Parámetros:**
+
+| Parámetro | Tipo | Default | Notas |
+|---|---|---|---|
+| `p_store_id` | `uuid` | **Requerido** | |
+| `p_query` | `text` | `NULL` | Prefijo de búsqueda por `serial` o `mac_normalized` |
+| `p_filter_firmware_version` | `text` | `NULL` | Si se envía, solo `v1` o `v2` |
+| `p_filter_hardware_version` | `text` | `NULL` | Si se envía, solo `v1` o `v2` |
+
+**Retorna (TABLE):**
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `sensor_id` | `uuid` | |
+| `serial` | `text` | |
+| `mac_normalized` | `text` | |
+| `firmware_version` | `text` | `v1` o `v2` |
+| `hardware_version` | `text` | `v1` o `v2` |
+| `current_status` | `sensor_install_status` | |
+| `is_active` | `boolean` | |
+| `installed_at` | `timestamptz` | |
+| `last_event_at` | `timestamptz` | Último evento registrado |
+
+**Uso dashboard/frontend:**
+- Usar `firmware_version` y `hardware_version` para renderizar tags por sensor.
+- En filtros, enviar `NULL` para “todos” y `v1`/`v2` para filtro exacto.
+
 ---
 
 ## RPCs Administrativos del Dashboard
@@ -419,6 +462,8 @@ Lista todos los sensores del sistema con paginación, búsqueda y filtros para e
 | `p_filter_is_active` | `boolean` | `NULL` | Filtro por `is_active` |
 | `p_sort_by` | `text` | `'updated_at'` | `updated_at`, `serial`, `current_status` |
 | `p_sort_order` | `text` | `'desc'` | `'asc'` o `'desc'` |
+| `p_filter_firmware_version` | `text` | `NULL` | Si se envía, solo `v1` o `v2` |
+| `p_filter_hardware_version` | `text` | `NULL` | Si se envía, solo `v1` o `v2` |
 
 **Retorna (TABLE):**
 
@@ -427,6 +472,8 @@ Lista todos los sensores del sistema con paginación, búsqueda y filtros para e
 | `sensor_id` | `uuid` | |
 | `serial` | `text` | `ARX...` |
 | `mac_normalized` | `text` | |
+| `firmware_version` | `text` | `v1` o `v2` |
+| `hardware_version` | `text` | `v1` o `v2` |
 | `current_status` | `text` | |
 | `is_active` | `boolean` | |
 | `current_store_id` | `uuid` | |
@@ -460,7 +507,7 @@ Detalle completo de un sensor, aceptando identificación por ID, MAC o serial. I
 
 | Campo | Fuente | Notas |
 |---|---|---|
-| Todos los campos de `sensors` | `sensors` | |
+| Todos los campos de `sensors` | `sensors` | Incluye `firmware_version` y `hardware_version` |
 | `store_name` | `stores` | Nombre de la tienda actual o NULL |
 | `store_address` | `stores` | Dirección de la tienda actual o NULL |
 | `installations` | `jsonb` | Array de instalaciones con `installation_id`, `store_id`, `store_name`, `status`, `started_at`, `completed_at` |
@@ -575,6 +622,7 @@ Decomisiona permanentemente un sensor. Bloquea toda instalación futura sobre es
 | Ver detalle de sensor (admin) | `owner`, `admin` | Acepta ID, MAC o serial |
 | Ver historial de instalaciones | `owner`, `admin` | |
 | Ver eventos de instalación | `owner`, `admin` | |
+| Filtrar sensores por versión | `owner`, `admin` | Vía `rpc_admin_list_sensors` con `p_filter_firmware_version` y/o `p_filter_hardware_version` |
 | Crear sensor directamente | ❌ | Solo a través de `rpc_sensor_upsert_stage` |
 | Modificar `serial` | ❌ | Campo GENERATED STORED, no modificable |
 | Instalar sensor decomisado | ❌ | Bloqueado permanentemente |

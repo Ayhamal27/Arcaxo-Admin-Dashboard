@@ -1,30 +1,26 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getSensorDetailAction } from '@/actions/sensors/get-sensor';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { MapPin, Calendar, Store, Cpu } from 'lucide-react';
 import Link from 'next/link';
 import { format, isValid } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { es, enUS } from 'date-fns/locale';
 import { SensorActionsClient } from './SensorActionsClient';
 
-function safeFormat(dateStr: string, fmt: string) {
+function safeFormat(dateStr: string, fmt: string, loc = es) {
   const d = new Date(dateStr);
-  return isValid(d) ? format(d, fmt, { locale: es }) : '—';
+  return isValid(d) ? format(d, fmt, { locale: loc }) : '—';
 }
 
 interface SensorDetailPageProps {
   params: Promise<{ locale: string; sensorId: string }>;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  installed: { label: 'Instalado', className: 'bg-[#E6F9F1] text-[#228D70]' },
-  failed: { label: 'Fallido', className: 'bg-[#FFE8EC] text-[#FF4163]' },
-  uninstalled: { label: 'Desinstalado', className: 'bg-[#F5F5F5] text-[#667085]' },
-  connecting: { label: 'Conectando', className: 'bg-[#FFF9E6] text-[#8B7200]' },
-};
-
 export default async function SensorDetailPage({ params }: SensorDetailPageProps) {
   const { locale, sensorId } = await params;
+  const t = await getTranslations('devices');
+  const dateLocale = locale === 'en' ? enUS : es;
 
   let sensor;
   try {
@@ -34,6 +30,13 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
   }
 
   if (!sensor) notFound();
+
+  const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+    installed: { label: t('statuses.installed'), className: 'bg-[#E6F9F1] text-[#228D70]' },
+    failed: { label: t('statuses.failed'), className: 'bg-[#FFE8EC] text-[#FF4163]' },
+    uninstalled: { label: t('statuses.uninstalled'), className: 'bg-[#F5F5F5] text-[#667085]' },
+    connecting: { label: t('statuses.connecting'), className: 'bg-[#FFF9E6] text-[#8B7200]' },
+  };
 
   const statusConfig = STATUS_CONFIG[sensor.current_status] ?? {
     label: sensor.current_status,
@@ -45,7 +48,7 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
       <Breadcrumb
         locale={locale}
         items={[
-          { label: 'Dispositivos', href: `/${locale}/devices` },
+          { label: t('title'), href: `/${locale}/devices` },
           { label: sensor.serial },
         ]}
       />
@@ -73,11 +76,19 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
                       : 'bg-[#F5F5F5] text-[#667085]'
                   }`}
                 >
-                  {sensor.is_active ? 'Activo' : 'Inactivo'}
+                  {sensor.is_active ? t('sensorActive') : t('sensorInactive')}
                 </span>
               </div>
 
-              <p className="text-[14px] text-[#667085] font-mono">{sensor.mac_normalized}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-[14px] text-[#667085] font-mono">{sensor.mac_normalized}</p>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0F0F5] text-[#667085]">
+                  FW: {sensor.firmware_version ?? '-'}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0F0F5] text-[#667085]">
+                  HW: {sensor.hardware_version ?? '-'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -87,7 +98,7 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
               <div className="flex items-start gap-3">
                 <Store className="w-4 h-4 text-[#82A2C2] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[12px] text-[#667085]">Tienda actual</p>
+                  <p className="text-[12px] text-[#667085]">{t('currentStore')}</p>
                   <p className="text-[15px] font-medium text-[#191919]">{sensor.store_name}</p>
                   {sensor.store_address && (
                     <p className="text-[12px] text-[#667085]">{sensor.store_address}</p>
@@ -100,7 +111,7 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
               <div className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 text-[#82A2C2] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[12px] text-[#667085]">Ubicación</p>
+                  <p className="text-[12px] text-[#667085]">{t('location')}</p>
                   <p className="text-[15px] font-medium text-[#191919]">
                     {sensor.city_name ?? ''}
                     {sensor.country_code ? `, ${sensor.country_code}` : ''}
@@ -113,9 +124,9 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
               <div className="flex items-start gap-3">
                 <Calendar className="w-4 h-4 text-[#82A2C2] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[12px] text-[#667085]">Fecha de instalación</p>
+                  <p className="text-[12px] text-[#667085]">{t('installDate')}</p>
                   <p className="text-[15px] font-medium text-[#191919]">
-                    {safeFormat(sensor.installed_at, 'd MMM yyyy')}
+                    {safeFormat(sensor.installed_at, 'd MMM yyyy', dateLocale)}
                   </p>
                 </div>
               </div>
@@ -125,9 +136,9 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
               <div className="flex items-start gap-3">
                 <Calendar className="w-4 h-4 text-[#82A2C2] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[12px] text-[#667085]">Fecha de desinstalación</p>
+                  <p className="text-[12px] text-[#667085]">{t('statuses.uninstalled')}</p>
                   <p className="text-[15px] font-medium text-[#191919]">
-                    {safeFormat(sensor.uninstalled_at, 'd MMM yyyy')}
+                    {safeFormat(sensor.uninstalled_at, 'd MMM yyyy', dateLocale)}
                   </p>
                 </div>
               </div>
@@ -137,27 +148,27 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
 
         {/* History card */}
         <div className="bg-white rounded-[15px] border border-[#E5E5EA] p-6 space-y-4">
-          <h2 className="text-[18px] font-semibold text-[#161616]">Historial</h2>
+          <h2 className="text-[18px] font-semibold text-[#161616]">{t('history')}</h2>
 
           <div>
-            <p className="text-[12px] text-[#667085]">Registrado</p>
+            <p className="text-[12px] text-[#667085]">{t('registered')}</p>
             <p className="text-[14px] text-[#191919]">
-              {safeFormat(sensor.created_at, 'd MMM yyyy')}
+              {safeFormat(sensor.created_at, 'd MMM yyyy', dateLocale)}
             </p>
           </div>
 
           <div>
-            <p className="text-[12px] text-[#667085]">Última actualización</p>
+            <p className="text-[12px] text-[#667085]">{t('lastUpdate')}</p>
             <p className="text-[14px] text-[#191919]">
-              {safeFormat(sensor.updated_at, 'd MMM yyyy, HH:mm')}
+              {safeFormat(sensor.updated_at, 'd MMM yyyy, HH:mm', dateLocale)}
             </p>
           </div>
 
           {sensor.decommissioned_at && (
             <div className="p-3 bg-[#FFE8EC] border border-[#FF4163] rounded-[8px]">
-              <p className="text-[13px] font-medium text-[#FF4163]">Dado de baja</p>
+              <p className="text-[13px] font-medium text-[#FF4163]">{t('decommissioned')}</p>
               <p className="text-[12px] text-[#FF4163]">
-                {safeFormat(sensor.decommissioned_at, 'd MMM yyyy')}
+                {safeFormat(sensor.decommissioned_at, 'd MMM yyyy', dateLocale)}
               </p>
               {sensor.decommission_reason && (
                 <p className="text-[12px] text-[#FF4163] mt-1">{sensor.decommission_reason}</p>
@@ -184,9 +195,9 @@ export default async function SensorDetailPage({ params }: SensorDetailPageProps
       <div className="mt-4">
         <Link
           href={`/${locale}/devices`}
-          className="text-[14px] text-[#0000FF] hover:underline"
+          className="text-[14px] font-medium text-[#667085] hover:text-[#0000FF] transition-colors"
         >
-          ← Volver a dispositivos
+          {t('backToDevices')}
         </Link>
       </div>
     </div>

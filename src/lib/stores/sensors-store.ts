@@ -4,6 +4,8 @@ interface SensorsFilters {
   search?: string;
   filterStatus?: string[];
   filterIsActive?: boolean;
+  filterFirmwareVersion?: string;
+  filterHardwareVersion?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }

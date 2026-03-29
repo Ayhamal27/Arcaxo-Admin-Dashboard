@@ -16,6 +16,7 @@ Referencia técnica por dominio del modelo de datos, reglas de negocio y contrat
 | [installer_locations.md](./installer_locations.md) | Ubicaciones GPS | Tracking de instaladores en tiempo real, `rpc_log_installer_location`, `rpc_get_nearby_installers` |
 | [geography.md](./geography.md) | Geografía | Catálogos de regiones, países, estados y ciudades |
 | [app_version.md](./app_version.md) | Versionado | Control de versión de la app móvil |
+| [dashboard_frontend_tags_v1_v2.md](./dashboard_frontend_tags_v1_v2.md) | Frontend Dashboard | Implementación de tags V1/V2 para sensores y cambios de RPC |
 
 ---
 

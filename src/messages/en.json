@@ -202,6 +202,7 @@
     "tableSerial": "Serial",
     "tableMac": "MAC",
     "tableInstalled": "Installed",
+    "tableVersion": "Version",
     "contactTitle": "Contact details",
     "contactPhone": "Phone",
     "contactAddress": "Address",
@@ -283,7 +284,23 @@
       "failed": "Failed",
       "uninstalled": "Uninstalled",
       "connecting": "Connecting"
-    }
+    },
+    "firmware": "Firmware",
+    "hardware": "Hardware",
+    "fwTag": "FW: {version}",
+    "hwTag": "HW: {version}",
+    "filterFirmware": "Firmware",
+    "filterHardware": "Hardware",
+    "allVersions": "All",
+    "backToDevices": "← Back to devices",
+    "currentStore": "Current store",
+    "location": "Location",
+    "history": "History",
+    "registered": "Registered",
+    "lastUpdate": "Last update",
+    "decommissioned": "Decommissioned",
+    "sensorActive": "Active",
+    "sensorInactive": "Inactive"
   },
   "aerial": {
     "title": "Aerial View",

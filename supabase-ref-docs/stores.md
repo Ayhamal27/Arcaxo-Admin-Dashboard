@@ -719,7 +719,7 @@ Lista todas las sesiones (instalación y mantenimiento) de una tienda con pagina
 
 ---
 
-### `rpc_admin_list_store_sensors(p_store_id, p_page?, p_page_size?, p_include_historical?)`
+### `rpc_admin_list_store_sensors(p_store_id, p_page?, p_page_size?, p_include_historical?, p_filter_firmware_version?, p_filter_hardware_version?)`
 
 Lista sensores asignados a una tienda, actualmente o en el historial.
 
@@ -733,6 +733,8 @@ Lista sensores asignados a una tienda, actualmente o en el historial.
 | `p_page` | `int` | `1` | |
 | `p_page_size` | `int` | `50` | |
 | `p_include_historical` | `boolean` | `false` | Si `false`: solo sensores en `sensors.current_store_id`. Si `true`: todos los `sensor_installations` de la tienda |
+| `p_filter_firmware_version` | `text` | `NULL` | Si se envía, solo `v1` o `v2` |
+| `p_filter_hardware_version` | `text` | `NULL` | Si se envía, solo `v1` o `v2` |
 
 **Retorna (TABLE):**
 
@@ -741,11 +743,18 @@ Lista sensores asignados a una tienda, actualmente o en el historial.
 | `sensor_id` | `uuid` | |
 | `serial` | `text` | `ARX...` |
 | `mac_normalized` | `text` | |
+| `firmware_version` | `text` | `v1` o `v2` |
+| `hardware_version` | `text` | `v1` o `v2` |
 | `current_status` | `sensor_install_status` | |
 | `is_active` | `boolean` | |
 | `installed_at` | `timestamptz` | |
 | `installer_name` | `text` | Primer instalador de la instalación activa/histórica |
 | `total_count` | `bigint` | |
+
+**Uso dashboard/frontend:**
+- Este RPC ya expone las versiones para pintar tags `FW`/`HW` por fila.
+- Para tabs de "Actuales" e "Histórico", reutilizar el mismo RPC variando `p_include_historical`.
+- Para filtros de versión, enviar `NULL` cuando no haya filtro.
 
 ---
 
