@@ -15,6 +15,7 @@ import { PrimaryButton } from '@/components/auth/primary-button';
 import { ErrorMessage } from '@/components/auth/error-message';
 import { ProfileRole, ProfileStatus } from '@/types/database';
 import Link from 'next/link';
+import { ArcaxoLogo } from '@/components/shared/ArcaxoLogo';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -84,9 +85,9 @@ export default function LoginPage({
   return (
     <LoginCard>
       {/* Logo / Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-[25px] font-semibold text-[#191919] tracking-tight">Arcaxo</h1>
-        <p className="text-[14px] text-[#667085] mt-1">{t('signInMessage')}</p>
+      <div className="flex flex-col items-center mb-8 gap-3">
+        <ArcaxoLogo className="h-[28px] w-auto" />
+        <p className="text-[14px] text-[#667085]">{t('signInMessage')}</p>
       </div>
 
       {generalError && <ErrorMessage message={generalError} />}

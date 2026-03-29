@@ -12,11 +12,16 @@ interface StoreImageProps {
 
 export function StoreImage({ src, alt, size = 71 }: StoreImageProps) {
   const [error, setError] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(() => {
     // If already a full URL, use immediately (no flash)
     if (src?.startsWith('http://') || src?.startsWith('https://')) return src;
     return null;
   });
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [resolvedSrc]);
 
   useEffect(() => {
     if (!src) return;
@@ -51,8 +56,9 @@ export function StoreImage({ src, alt, size = 71 }: StoreImageProps) {
       alt={alt}
       width={size}
       height={size}
-      className="rounded-[5px] object-cover flex-shrink-0"
+      className={`rounded-[5px] object-cover flex-shrink-0 transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
       style={{ width: size, height: size }}
+      onLoad={() => setLoaded(true)}
       onError={() => setError(true)}
     />
   );

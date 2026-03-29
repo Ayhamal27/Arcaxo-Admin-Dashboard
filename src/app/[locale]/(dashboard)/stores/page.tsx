@@ -193,11 +193,11 @@ function StorePhoneModal({ store, onClose }: { store: StorePhoneInfo; onClose: (
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-[15px] p-6 w-full max-w-[380px] shadow-xl"
+        className="bg-white rounded-[15px] p-6 w-full max-w-[380px] shadow-xl animate-in fade-in zoom-in-95 duration-200 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-5">
@@ -403,10 +403,11 @@ export default function TiendasPage({
                 </tr>
               </thead>
               <tbody>
-                {stores.map((row) => (
+                {stores.map((row, index) => (
                   <tr
                     key={row.store_id}
-                    className="border-b border-[#F8F8F8] last:border-0 h-[96px] cursor-pointer hover:bg-[#FAFAFF] transition-colors"
+                    className="border-b border-[#F8F8F8] last:border-0 h-[96px] cursor-pointer hover:bg-[#FAFAFF] transition-colors duration-150 animate-in fade-in duration-300"
+                    style={{ animationDelay: `${index * 35}ms`, animationFillMode: 'both' }}
                     onClick={() => router.push(`/${locale}/stores/${row.store_id}`)}
                   >
                     {/* Activity dot */}
@@ -468,18 +469,18 @@ export default function TiendasPage({
                       <div className="flex items-center gap-[20px]">
                         <Link
                           href={`/${locale}/stores/${row.store_id}`}
-                          className="flex items-center justify-center h-[34px] w-[80px] text-[15px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors whitespace-nowrap"
+                          className="flex items-center justify-center h-[34px] w-[80px] text-[15px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition active:scale-[0.97] whitespace-nowrap"
                         >
                           {tCommon('expand')}
                         </Link>
                         <Link
                           href={`/${locale}/stores/${row.store_id}/edit`}
-                          className="flex items-center justify-center h-[34px] w-[40px] border border-[#0000FF] rounded-[8px] text-[#0000FF] hover:bg-[#F0F0FF] transition-colors"
+                          className="flex items-center justify-center h-[34px] w-[40px] border border-[#0000FF] rounded-[8px] text-[#0000FF] hover:bg-[#F0F0FF] transition active:scale-[0.97]"
                         >
                           <SquarePen className="w-[18px] h-[18px]" />
                         </Link>
                         <button
-                          className="flex items-center justify-center h-[34px] w-[40px] bg-[#0000FF] rounded-[8px] text-white hover:bg-[#0000CC] transition-colors cursor-pointer"
+                          className="flex items-center justify-center h-[34px] w-[40px] bg-[#0000FF] rounded-[8px] text-white hover:bg-[#0000CC] transition active:scale-[0.97] cursor-pointer"
                           onClick={() =>
                             setPhoneModal({
                               name: row.name,

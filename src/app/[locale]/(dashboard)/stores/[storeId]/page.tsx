@@ -58,7 +58,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
 
           <Link
             href={`/${locale}/stores/${storeId}/edit`}
-            className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#0000FF] border border-[#0000FF] rounded-[8px] hover:bg-[#F0F0FF] transition active:scale-[0.97] cursor-pointer"
           >
             <Pencil className="w-4 h-4" />
             {t('edit')}

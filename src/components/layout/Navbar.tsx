@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { logoutAction } from '@/actions/auth/logout';
 import Link from 'next/link';
+import { ArcaxoLogo } from '@/components/shared/ArcaxoLogo';
 
 interface NavbarProps {
   locale: string;
@@ -106,10 +107,8 @@ export function Navbar({ locale, onMenuToggle, sidebarOpen }: NavbarProps) {
           {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
 
-        <Link href={`/${locale}/stores`} className="flex items-center">
-          <span className="text-[22px] font-semibold text-[#191919] tracking-tight leading-none">
-            Arcaxo
-          </span>
+        <Link href={`/${locale}/stores`} aria-label="Arcaxo">
+          <ArcaxoLogo className="h-[26px] w-auto" />
         </Link>
       </div>
 

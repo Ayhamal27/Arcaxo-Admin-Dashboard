@@ -250,7 +250,7 @@ export function StoreDetailClient({
         {/* WiFi */}
         <button
           onClick={handleOpenWifiModal}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition-colors cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition active:scale-[0.98] cursor-pointer text-left"
         >
           <Wifi className="w-4 h-4 text-[#0000FF] flex-shrink-0" />
           <div className="flex-1 min-w-0">
@@ -264,7 +264,7 @@ export function StoreDetailClient({
         {/* Devices */}
         <button
           onClick={() => setShowDevicesModal(true)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition-colors cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition active:scale-[0.98] cursor-pointer text-left"
         >
           <Cpu className="w-4 h-4 text-[#7C3AED] flex-shrink-0" />
           <div className="flex-1 min-w-0">
@@ -276,7 +276,7 @@ export function StoreDetailClient({
         {/* Facade */}
         <button
           onClick={() => setShowFacadeModal(true)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition-colors cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition active:scale-[0.98] cursor-pointer text-left"
         >
           <Camera className="w-4 h-4 text-[#228D70] flex-shrink-0" />
           <div className="flex-1 min-w-0">
@@ -291,10 +291,10 @@ export function StoreDetailClient({
       {/* WiFi Modal */}
       {showWifiModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-150"
           style={{ left: overlayLeft, padding: 16 }}
         >
-          <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
+          <div className="bg-white rounded-[15px] p-6 w-full animate-in fade-in zoom-in-95 duration-200 ease-out" style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">{t('wifiModalTitle')}</h3>
               <button onClick={handleCloseWifiModal} className="cursor-pointer">
@@ -414,10 +414,10 @@ export function StoreDetailClient({
       {/* Devices Modal */}
       {showDevicesModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-150"
           style={{ left: overlayLeft, padding: 16 }}
         >
-          <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
+          <div className="bg-white rounded-[15px] p-6 w-full animate-in fade-in zoom-in-95 duration-200 ease-out" style={{ maxWidth: 440 }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">{t('devicesModalTitle')}</h3>
               <button onClick={() => setShowDevicesModal(false)} className="cursor-pointer">
@@ -463,11 +463,11 @@ export function StoreDetailClient({
       {/* Facade Modal — Drag & Drop (portal to body, inline styles for Safari compat) */}
       {showFacadeModal && createPortal(
         <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-150"
           style={{ left: overlayLeft, padding: 24 }}
         >
           <div
-            className="bg-white rounded-[15px] p-6 flex flex-col"
+            className="bg-white rounded-[15px] p-6 flex flex-col animate-in fade-in zoom-in-95 duration-200 ease-out"
             style={{ maxWidth: 768, width: '100%', height: '85vh', maxHeight: 700 }}
           >
             {/* Header — fixed */}
@@ -703,11 +703,11 @@ export function StoreToggle({
 
       {showDeactivateModal && (
         <div
-          className={`fixed top-0 bottom-0 right-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-[left] duration-300 left-0 ${
+          className={`fixed top-0 bottom-0 right-0 bg-black/40 flex items-center justify-center z-50 p-4 transition-[left] duration-300 left-0 animate-in fade-in duration-150 ${
             sidebarCollapsed ? 'lg:left-[72px]' : 'lg:left-[317px]'
           }`}
         >
-          <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full">
+          <div className="bg-white rounded-[15px] p-6 max-w-[440px] w-full animate-in fade-in zoom-in-95 duration-200 ease-out">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[18px] font-semibold text-[#191919]">
                 {hasDevices ? t('toggleStartClose') : t('toggleDeactivate')}
@@ -826,7 +826,7 @@ export function MaintenanceButton({
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#D97706] border border-[#D97706] rounded-[8px] hover:bg-[#FFFBEB] transition-colors cursor-pointer"
+        className="flex items-center gap-2 px-4 py-1.5 text-[14px] font-medium text-[#D97706] border border-[#D97706] rounded-[8px] hover:bg-[#FFFBEB] transition active:scale-[0.97] cursor-pointer"
       >
         <Wrench className="w-4 h-4" />
         {t('maintenance')}
@@ -835,10 +835,10 @@ export function MaintenanceButton({
       {showModal &&
         createPortal(
           <div
-            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-in fade-in duration-150"
             style={{ left: overlayLeft, padding: 16 }}
           >
-            <div className="bg-white rounded-[15px] p-6 w-full" style={{ maxWidth: 440 }}>
+            <div className="bg-white rounded-[15px] p-6 w-full animate-in fade-in zoom-in-95 duration-200 ease-out" style={{ maxWidth: 440 }}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[18px] font-semibold text-[#191919]">
                   {t('maintenanceModalTitle')}
