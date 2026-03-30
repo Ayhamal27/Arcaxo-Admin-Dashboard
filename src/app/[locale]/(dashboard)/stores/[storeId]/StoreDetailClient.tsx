@@ -13,7 +13,7 @@ import { getWifiCredentialsAction } from '@/actions/stores/get-wifi-credentials'
 import { openMaintenanceAction } from '@/actions/stores/maintenance';
 import { useSidebarStore } from '@/lib/stores/sidebar-store';
 import { MaintenanceRequestCause, StoreToggleAction } from '@/types/database';
-import { Wifi, Cpu, Camera, X, Upload, Pencil, Eye, EyeOff, Wrench } from 'lucide-react';
+import { Wifi, Cpu, Camera, X, Upload, Pencil, Eye, EyeOff, Wrench, ChevronRight } from 'lucide-react';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', ''];
@@ -246,45 +246,54 @@ export function StoreDetailClient({
   return (
     <>
       {/* Action buttons */}
-      <div className="space-y-3">
+      <div className="border-t border-[#F0F0F5] divide-y divide-[#F0F0F5] pb-3">
         {/* WiFi */}
         <button
           onClick={handleOpenWifiModal}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition active:scale-[0.98] cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#F7F8FF] active:bg-[#F0F0FF] transition-colors cursor-pointer text-left"
         >
-          <Wifi className="w-4 h-4 text-[#0000FF] flex-shrink-0" />
+          <div className="w-7 h-7 rounded-[8px] bg-[#EEF0FF] flex items-center justify-center flex-shrink-0">
+            <Wifi className="w-3.5 h-3.5 text-[#0000FF]" />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-[#191919]">{t('wifiCredentials')}</p>
-            <p className="text-[12px] text-[#667085] truncate">
+            <p className="text-[11px] text-[#667085] truncate">
               {wifiSsid ? t('wifiSsidLabel', { ssid: wifiSsid }) : t('wifiNotConfigured')}
             </p>
           </div>
+          <ChevronRight className="w-3.5 h-3.5 text-[#C0C5D0] flex-shrink-0" />
         </button>
 
         {/* Devices */}
         <button
           onClick={() => setShowDevicesModal(true)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition active:scale-[0.98] cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#FAF7FF] active:bg-[#F3EEFF] transition-colors cursor-pointer text-left"
         >
-          <Cpu className="w-4 h-4 text-[#7C3AED] flex-shrink-0" />
+          <div className="w-7 h-7 rounded-[8px] bg-[#F3EEFF] flex items-center justify-center flex-shrink-0">
+            <Cpu className="w-3.5 h-3.5 text-[#7C3AED]" />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-[#191919]">{t('deviceContract')}</p>
-            <p className="text-[12px] text-[#667085]">{t('devicesAuthorized', { count: authorizedDevicesCount })}</p>
+            <p className="text-[11px] text-[#667085]">{t('devicesAuthorized', { count: authorizedDevicesCount })}</p>
           </div>
+          <ChevronRight className="w-3.5 h-3.5 text-[#C0C5D0] flex-shrink-0" />
         </button>
 
         {/* Facade */}
         <button
           onClick={() => setShowFacadeModal(true)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] border border-[#E5E5EA] hover:bg-[#F8F8FF] transition active:scale-[0.98] cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#F0FBF6] active:bg-[#E6F9F0] transition-colors cursor-pointer text-left"
         >
-          <Camera className="w-4 h-4 text-[#228D70] flex-shrink-0" />
+          <div className="w-7 h-7 rounded-[8px] bg-[#EAFAF3] flex items-center justify-center flex-shrink-0">
+            <Camera className="w-3.5 h-3.5 text-[#228D70]" />
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-[#191919]">{t('facadePhoto')}</p>
-            <p className="text-[12px] text-[#667085]">
+            <p className="text-[11px] text-[#667085]">
               {facadePhotoUrl ? t('facadeConfigured') : t('facadeNotConfigured')}
             </p>
           </div>
+          <ChevronRight className="w-3.5 h-3.5 text-[#C0C5D0] flex-shrink-0" />
         </button>
       </div>
 

@@ -74,8 +74,8 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
         </div>
       </div>
 
-      {/* 2-column layout: Tabs (2/3) | Info + Stats (1/3 sticky) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start flex-1 min-h-0">
+      {/* 2-column layout: Tabs (2/3) | Info + Stats (1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start lg:items-stretch lg:grid-rows-1 flex-1 min-h-0">
         {/* Left: Tabs — sessions + devices */}
         <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
           <StoreTabsClient storeId={storeId} locale={locale} />
@@ -91,12 +91,12 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
           </div>
         </div>
 
-        {/* Right column: sticky, stretches to bottom of viewport */}
-        <div className="lg:sticky lg:top-[104px] flex flex-col gap-5">
-          {/* Store info + stats card (unified) */}
-          <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden flex flex-col">
+        {/* Right column: fills available height, scrolls internally on small heights */}
+        <div className="flex flex-col lg:min-h-0 lg:overflow-y-auto">
+          {/* Store info + stats card */}
+          <div className="bg-white rounded-[15px] border border-[#E5E5EA] overflow-hidden flex flex-col lg:flex-1">
             {/* Facade photo — 24vh banner */}
-            <div className="relative w-full flex flex-col justify-end" style={{ height: '24vh' }}>
+            <div className="relative w-full flex flex-col justify-end" style={{ height: '20vh' }}>
               {facadeDisplayUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
@@ -125,15 +125,15 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               )}
             </div>
 
-            <div className="px-5 pt-4 pb-5 flex flex-col">
-              <div className="flex items-center gap-2.5 mb-2">
+            <div className="px-4 pt-4 pb-2 flex flex-col">
+              <div className="flex items-center gap-2 mb-1.5">
                 <StatusDot status={store.status} />
                 <h1 className="text-[18px] font-semibold text-[#191919] leading-tight">
                   {store.name}
                 </h1>
               </div>
 
-              <div className="space-y-1.5 text-[13px] text-[#667085] mb-4">
+              <div className="space-y-1 text-[13px] text-[#667085] mb-3">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                   <span>{store.address}</span>
@@ -149,9 +149,9 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               </div>
 
               {/* Stats grid 2x2 */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-3 mb-4 px-3 py-3 rounded-[8px] bg-[#F9FAFB]">
+              <div className="grid grid-cols-2 gap-x-2 gap-y-2 mb-2 px-3 py-2.5 rounded-[8px] bg-[#F9FAFB]">
               {/* Row 1 */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-[#82A2C2] flex-shrink-0" />
                 <div>
                   <p className="text-[11px] text-[#667085]">{t('devices')}</p>
@@ -161,7 +161,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#82A2C2] flex-shrink-0" />
                 <div>
                   <p className="text-[11px] text-[#667085]">{t('sessions')}</p>
@@ -172,7 +172,7 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               </div>
 
               {/* Row 2 */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#82A2C2] flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[11px] text-[#667085]">{t('responsible')}</p>
@@ -191,18 +191,18 @@ export default async function StoreDetailPage({ params }: StoreDetailPageProps) 
               </div>
             </div>
 
-{/* Action buttons: WiFi, Devices, Facade — pushed to bottom */}
-              <div className="pt-2">
-                <StoreDetailClient
-                  storeId={storeId}
-                  initialActive={store.active}
-                  installedDevicesCount={store.installed_devices_count ?? 0}
-                  authorizedDevicesCount={store.authorized_devices_count ?? 0}
-                  wifiSsid={store.wifi_ssid ?? null}
-                  facadePhotoUrl={store.facade_photo_url ?? null}
-                  locale={locale}
-                />
-              </div>
+            </div>
+            {/* Action buttons — direct card child, full-width dividers, anchored to bottom */}
+            <div className="mt-auto">
+              <StoreDetailClient
+                storeId={storeId}
+                initialActive={store.active}
+                installedDevicesCount={store.installed_devices_count ?? 0}
+                authorizedDevicesCount={store.authorized_devices_count ?? 0}
+                wifiSsid={store.wifi_ssid ?? null}
+                facadePhotoUrl={store.facade_photo_url ?? null}
+                locale={locale}
+              />
             </div>
           </div>
         </div>

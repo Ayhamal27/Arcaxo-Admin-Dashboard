@@ -52,7 +52,7 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
             "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#0000FF]",
             "after:transition-transform after:duration-200 after:ease-out after:origin-left",
             activeTab === 'sessions'
-              ? 'text-[#0000FF] after:scale-x-100'
+              ? 'text-[#0000FF] bg-[#F0F0FF] after:scale-x-100'
               : 'text-[#667085] hover:text-[#191919] after:scale-x-0',
           ].join(' ')}
         >
@@ -65,7 +65,7 @@ export function StoreTabsClient({ storeId, locale }: StoreTabsClientProps) {
             "after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#0000FF]",
             "after:transition-transform after:duration-200 after:ease-out after:origin-left",
             activeTab === 'devices'
-              ? 'text-[#0000FF] after:scale-x-100'
+              ? 'text-[#0000FF] bg-[#F0F0FF] after:scale-x-100'
               : 'text-[#667085] hover:text-[#191919] after:scale-x-0',
           ].join(' ')}
         >
