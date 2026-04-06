@@ -293,15 +293,8 @@ export default function NuevaTiendaPage({
 
   // Location input state
   const [locationInput, setLocationInput] = useState('');
-  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isFillingGeo, setIsFillingGeo] = useState(false);
   const [resolvedAddress, setResolvedAddress] = useState('');
-  const [geoSuggestion, setGeoSuggestion] = useState<{
-    country: string;
-    countryCode: string;
-    state: string;
-    city: string;
-  } | null>(null);
-  const [showGeoConfirm, setShowGeoConfirm] = useState(false);
 
   // Geography data
   const [countries, setCountries] = useState<CountryOption[]>([]);
@@ -358,6 +351,7 @@ export default function NuevaTiendaPage({
   const phoneCountry1 = w1('phoneCountry');
   const phoneNumber1 = w1('phoneNumber');
   const latValue = w1('latitude');
+  const lngValue = w1('longitude');
 
   // Step 2 form
   const {
@@ -374,119 +368,101 @@ export default function NuevaTiendaPage({
   const respPhoneCountry = w2('respPhoneCountry');
   const respPhoneNumber = w2('respPhoneNumber');
 
-  // Handle location input: detect lat,lng paste and reverse geocode
+  // Handle location input: detects coords and updates form, no auto-geocoding
   const handleLocationChange = useCallback(
-    async (value: string) => {
+    (value: string) => {
       setLocationInput(value);
       setResolvedAddress('');
-      setGeoSuggestion(null);
-      setShowGeoConfirm(false);
 
-      // Reset coords when input changes
       sv1('latitude', 0);
       sv1('longitude', 0);
       sv1('address', '');
 
       const coords = parseLatLng(value);
       if (!coords) {
-        // Not a lat,lng format — treat as manual address text
         if (value.trim().length >= 5) {
           sv1('address', value.trim(), { shouldValidate: true });
+          setResolvedAddress(value.trim());
         }
         return;
       }
 
-      // It's a lat,lng — reverse geocode
       sv1('latitude', coords.lat, { shouldValidate: true });
       sv1('longitude', coords.lng, { shouldValidate: true });
-      setIsGeocoding(true);
-
-      try {
-        const geo = await reverseGeocodeAction(coords.lat, coords.lng);
-        if (geo) {
-          sv1('address', geo.address, { shouldValidate: true });
-          setResolvedAddress(geo.address);
-          if (geo.country && geo.state && geo.city) {
-            setGeoSuggestion({
-              country: geo.country,
-              countryCode: geo.countryCode,
-              state: geo.state,
-              city: geo.city,
-            });
-            setShowGeoConfirm(true);
-          }
-        } else {
-          // Geocoding returned no results — use coords as address
-          sv1('address', `${coords.lat}, ${coords.lng}`, { shouldValidate: true });
-        }
-      } finally {
-        setIsGeocoding(false);
-      }
     },
     [sv1]
   );
 
-  // Auto-fill geo dropdowns from geocoding suggestion
-  const handleAcceptGeoSuggestion = useCallback(async () => {
-    if (!geoSuggestion) return;
-    setShowGeoConfirm(false);
+  // Button handler: geocode coords, show address, then fill País/Estado/Ciudad
+  const handleFillGeoFromCoords = useCallback(async () => {
+    if (!latValue || !lngValue) return;
+    setIsFillingGeo(true);
 
-    // 1. Find and select country
-    const matchedCountry = countries.find(
-      (c) =>
-        normalize(c.country_name) === normalize(geoSuggestion.country) ||
-        c.country_code.toUpperCase() === geoSuggestion.countryCode.toUpperCase()
-    );
-    if (!matchedCountry) {
-      toast.error(`País "${geoSuggestion.country}" no encontrado en la lista`);
-      return;
-    }
-
-    setGeoData({ countryId: matchedCountry.country_id, stateId: undefined, cityId: undefined });
-
-    // 2. Load states and find match
     try {
+      const geo = await reverseGeocodeAction(latValue, lngValue);
+      if (!geo) {
+        toast.error('No se pudo obtener la dirección. Verifica la clave de Google Maps o completa los campos manualmente.');
+        return;
+      }
+
+      sv1('address', geo.address, { shouldValidate: true });
+      setResolvedAddress(geo.address);
+
+      if (!geo.country || !geo.state || !geo.city) {
+        toast.info('Dirección calculada. Selecciona el país, estado y ciudad manualmente.');
+        return;
+      }
+
+      const matchedCountry = countries.find(
+        (c) =>
+          normalize(c.country_name) === normalize(geo.country) ||
+          c.country_code.toUpperCase() === geo.countryCode.toUpperCase()
+      );
+      if (!matchedCountry) {
+        toast.info(`País "${geo.country}" no encontrado en la lista`);
+        return;
+      }
+
+      setGeoData({ countryId: matchedCountry.country_id, stateId: undefined, cityId: undefined });
+
       const statesList = await listStatesAction(matchedCountry.country_id);
       setStates(statesList);
 
       const matchedState = statesList.find(
         (s) =>
-          normalize(s.state_name) === normalize(geoSuggestion.state) ||
-          normalize(s.state_name).includes(normalize(geoSuggestion.state)) ||
-          normalize(geoSuggestion.state).includes(normalize(s.state_name))
+          normalize(s.state_name) === normalize(geo.state) ||
+          normalize(s.state_name).includes(normalize(geo.state)) ||
+          normalize(geo.state).includes(normalize(s.state_name))
       );
       if (!matchedState) {
-        toast.info(`Estado "${geoSuggestion.state}" no encontrado. Selecciónalo manualmente.`);
+        toast.info(`Estado "${geo.state}" no encontrado. Selecciónalo manualmente.`);
         return;
       }
 
-      setGeoData((prev) => ({
-        ...prev,
-        stateId: matchedState.state_id,
-        cityId: undefined,
-      }));
+      setGeoData((prev) => ({ ...prev, stateId: matchedState.state_id, cityId: undefined }));
 
-      // 3. Load cities and find match
       const citiesList = await listCitiesAction(matchedCountry.country_id, matchedState.state_id);
       setCities(citiesList);
 
       const matchedCity = citiesList.find(
         (c) =>
-          normalize(c.city_name) === normalize(geoSuggestion.city) ||
-          normalize(c.city_name).includes(normalize(geoSuggestion.city)) ||
-          normalize(geoSuggestion.city).includes(normalize(c.city_name))
+          normalize(c.city_name) === normalize(geo.city) ||
+          normalize(c.city_name).includes(normalize(geo.city)) ||
+          normalize(geo.city).includes(normalize(c.city_name))
       );
       if (matchedCity) {
         setGeoData((prev) => ({ ...prev, cityId: matchedCity.city_id }));
         setGeoErrors({});
         toast.success('Ubicación autocompletada');
       } else {
-        toast.info(`Ciudad "${geoSuggestion.city}" no encontrada. Selecciónala manualmente.`);
+        toast.info(`Ciudad "${geo.city}" no encontrada. Selecciónala manualmente.`);
       }
     } catch {
-      toast.error('Error al cargar datos geográficos');
+      toast.error('Error al calcular la dirección');
+    } finally {
+      setIsFillingGeo(false);
     }
-  }, [geoSuggestion, countries]);
+  }, [latValue, lngValue, sv1, countries]);
 
   const handleStep1 = (data: Step1FormData) => {
     const newGeoErrors: typeof geoErrors = {};
@@ -607,66 +583,49 @@ export default function NuevaTiendaPage({
                       err1.address || err1.latitude ? 'ring-1 ring-[#FF4163]' : ''
                     }`}
                   >
-                    {isGeocoding ? (
-                      <Loader2 className="w-[24px] h-[24px] text-[#0000FF] flex-shrink-0 animate-spin" />
-                    ) : (
-                      <Navigation className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />
-                    )}
+                    <Navigation className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />
                     <input
                       className="flex-1 bg-transparent text-[18px] text-[#1D1D1D] placeholder:text-[#838383] outline-none h-full"
                       placeholder="10.2451, -68.0087"
                       value={locationInput}
                       onChange={(e) => handleLocationChange(e.target.value)}
-                      onPaste={(e) => {
-                        // Capture ref before React nullifies the synthetic event
-                        const input = e.currentTarget;
-                        setTimeout(() => {
-                          handleLocationChange(input.value);
-                        }, 0);
-                      }}
                     />
                   </div>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1 px-1">
-                    Pega las coordenadas de Google Maps (click derecho en el mapa → copiar coordenadas) o escribe la dirección manualmente
-                  </p>
+                  {/* Helper text OR resolved address */}
+                  {resolvedAddress ? (
+                    <p className="text-[13px] text-[#228D70] mt-1 px-1 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      {resolvedAddress}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-[#9CA3AF] mt-1 px-1">
+                      Pega las coordenadas de Google Maps (click derecho en el mapa → copiar coordenadas) o escribe la dirección manualmente
+                    </p>
+                  )}
                   <FieldError
                     message={err1.address?.message || err1.latitude?.message}
                   />
 
-                  {/* Resolved address from geocoding */}
-                  {resolvedAddress && latValue !== 0 && (
-                    <p className="text-[12px] text-[#228D70] mt-1 px-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 flex-shrink-0" />
-                      {resolvedAddress}
-                    </p>
-                  )}
-
-                  {/* Geo suggestion confirm */}
-                  {showGeoConfirm && geoSuggestion && (
-                    <div className="mt-2 p-3 bg-[#F0F0FF] border border-[#D0D0FF] rounded-[8px]">
-                      <p className="text-[13px] text-[#191919] mb-2">
-                        Ubicación detectada: <span className="font-medium">{geoSuggestion.city}, {geoSuggestion.state}, {geoSuggestion.country}</span>
-                      </p>
-                      <p className="text-[12px] text-[#667085] mb-3">
-                        ¿Deseas autocompletar los campos de País, Estado y Ciudad?
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handleAcceptGeoSuggestion}
-                          className="h-[32px] px-4 text-[13px] font-medium text-white bg-[#0000FF] rounded-[6px] hover:bg-[#0000CC] transition-colors cursor-pointer"
-                        >
-                          Sí, autocompletar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowGeoConfirm(false)}
-                          className="h-[32px] px-4 text-[13px] font-medium text-[#667085] border border-[#D0D5DD] rounded-[6px] hover:bg-[#F9F9F9] transition-colors cursor-pointer"
-                        >
-                          No, lo haré manual
-                        </button>
-                      </div>
-                    </div>
+                  {/* Button: visible when valid coords are entered */}
+                  {latValue !== 0 && (
+                    <button
+                      type="button"
+                      onClick={handleFillGeoFromCoords}
+                      disabled={isFillingGeo}
+                      className="mt-2 h-[36px] px-4 text-[13px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 w-fit"
+                    >
+                      {isFillingGeo ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Completando ubicación...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="w-4 h-4" />
+                          Calcular dirección desde coordenadas
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>

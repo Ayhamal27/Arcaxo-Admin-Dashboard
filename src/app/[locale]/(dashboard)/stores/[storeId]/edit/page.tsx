@@ -1,12 +1,12 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, ChevronDown, Loader2 } from 'lucide-react';
+import { MapPin, ChevronDown, Loader2, Navigation } from 'lucide-react';
 import {
   getCountries,
   getCountryCallingCode,
@@ -15,6 +15,7 @@ import {
 } from 'libphonenumber-js';
 import { getStoreDetailAction } from '@/actions/stores/get-store';
 import { updateStoreAction } from '@/actions/stores/update-store';
+import { reverseGeocodeAction } from '@/actions/geography/reverse-geocode';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { listCountriesAction, CountryOption } from '@/actions/geography/list-countries';
 import { listStatesAction, StateOption } from '@/actions/geography/list-states';
@@ -48,15 +49,23 @@ function dialCodeToIso(dialCode?: string | null): string {
   return match?.iso ?? '';
 }
 
-function extractCoordsFromGoogleMapsUrl(url: string): {
-  lat: number;
-  lng: number;
-} | null {
-  const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
-  const qMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
-  return null;
+/** Detects "lat, lng" format like "10.245141129088811, -68.00875269101005" */
+function parseLatLng(value: string): { lat: number; lng: number } | null {
+  const match = value.trim().match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if (!match) return null;
+  const lat = parseFloat(match[1]);
+  const lng = parseFloat(match[2]);
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
+/** Normalize string for fuzzy matching */
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
 }
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -68,7 +77,9 @@ const Step1Schema = z
     name: z.string().min(2, 'Mínimo 2 caracteres').max(100),
     phoneCountry: z.string().optional(),
     phoneNumber: z.string().optional(),
-    google_maps_url: z.string().min(5, 'Dirección requerida'),
+    address: z.string().min(3, 'Dirección requerida'),
+    latitude: z.number().refine((v) => v !== 0, 'Coordenadas requeridas'),
+    longitude: z.number().refine((v) => v !== 0, 'Coordenadas requeridas'),
   })
   .refine(
     (data) => {
@@ -287,6 +298,11 @@ export default function EditarTiendaPage({
   const [loading, setLoading] = useState(true);
   const [store, setStore] = useState<RpcAdminGetStoreDetailOutput | null>(null);
 
+  // Location input state
+  const [locationInput, setLocationInput] = useState('');
+  const [isFillingGeo, setIsFillingGeo] = useState(false);
+  const [resolvedAddress, setResolvedAddress] = useState('');
+
   // Geography data
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [states, setStates] = useState<StateOption[]>([]);
@@ -306,11 +322,13 @@ export default function EditarTiendaPage({
     formState: { errors: err1 },
   } = useForm<Step1FormData>({
     resolver: zodResolver(Step1Schema),
-    defaultValues: { phoneCountry: '', phoneNumber: '' },
+    defaultValues: { phoneCountry: '', phoneNumber: '', address: '', latitude: 0, longitude: 0 },
   });
 
   const phoneCountry1 = w1('phoneCountry');
   const phoneNumber1 = w1('phoneNumber');
+  const latValue = w1('latitude');
+  const lngValue = w1('longitude');
 
   // Step 2 form
   const {
@@ -337,12 +355,23 @@ export default function EditarTiendaPage({
 
         // Pre-fill step 1
         const storePhoneIso = dialCodeToIso(storeData.phone_country_code);
+        const storeLat = storeData.latitude ?? 0;
+        const storeLng = storeData.longitude ?? 0;
         reset1({
           name: storeData.name,
           phoneCountry: storePhoneIso,
           phoneNumber: storeData.phone_number ?? '',
-          google_maps_url: storeData.google_maps_url || storeData.address || '',
+          address: storeData.address || '',
+          latitude: storeLat,
+          longitude: storeLng,
         });
+        // Pre-fill location input with existing coordinates
+        if (storeLat !== 0 && storeLng !== 0) {
+          setLocationInput(`${storeLat}, ${storeLng}`);
+          setResolvedAddress(storeData.address || '');
+        } else if (storeData.address) {
+          setLocationInput(storeData.address);
+        }
 
         // Pre-fill step 2 from responsible
         const resp = storeData.responsible as StoreResponsible | null;
@@ -417,6 +446,105 @@ export default function EditarTiendaPage({
       .finally(() => setLoadingCities(false));
   }, [geoData.stateId, geoInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Location handlers ─────────────────────────────────────────────────────
+
+  // Handle location input: detects coords and updates form, no auto-geocoding
+  const handleLocationChange = useCallback(
+    (value: string) => {
+      setLocationInput(value);
+      setResolvedAddress('');
+
+      sv1('latitude', 0);
+      sv1('longitude', 0);
+      sv1('address', '');
+
+      const coords = parseLatLng(value);
+      if (!coords) {
+        if (value.trim().length >= 5) {
+          sv1('address', value.trim(), { shouldValidate: true });
+          setResolvedAddress(value.trim());
+        }
+        return;
+      }
+
+      sv1('latitude', coords.lat, { shouldValidate: true });
+      sv1('longitude', coords.lng, { shouldValidate: true });
+    },
+    [sv1]
+  );
+
+  // Button handler: geocode coords, show address, then fill País/Estado/Ciudad
+  const handleFillGeoFromCoords = useCallback(async () => {
+    if (!latValue || !lngValue) return;
+    setIsFillingGeo(true);
+
+    try {
+      const geo = await reverseGeocodeAction(latValue, lngValue);
+      if (!geo) {
+        toast.error('No se pudo obtener la dirección. Verifica la clave de Google Maps o completa los campos manualmente.');
+        return;
+      }
+
+      sv1('address', geo.address, { shouldValidate: true });
+      setResolvedAddress(geo.address);
+
+      if (!geo.country || !geo.state || !geo.city) {
+        toast.info('Dirección calculada. Selecciona el país, estado y ciudad manualmente.');
+        return;
+      }
+
+      const matchedCountry = countries.find(
+        (c) =>
+          normalize(c.country_name) === normalize(geo.country) ||
+          c.country_code.toUpperCase() === geo.countryCode.toUpperCase()
+      );
+      if (!matchedCountry) {
+        toast.info(`País "${geo.country}" no encontrado en la lista`);
+        return;
+      }
+
+      setGeoData({ countryId: matchedCountry.country_id, stateId: undefined, cityId: undefined });
+      setGeoInitialized(true);
+
+      const statesList = await listStatesAction(matchedCountry.country_id);
+      setStates(statesList);
+
+      const matchedState = statesList.find(
+        (s) =>
+          normalize(s.state_name) === normalize(geo.state) ||
+          normalize(s.state_name).includes(normalize(geo.state)) ||
+          normalize(geo.state).includes(normalize(s.state_name))
+      );
+      if (!matchedState) {
+        toast.info(`Estado "${geo.state}" no encontrado. Selecciónalo manualmente.`);
+        return;
+      }
+
+      setGeoData((prev) => ({ ...prev, stateId: matchedState.state_id, cityId: undefined }));
+
+      const citiesList = await listCitiesAction(matchedCountry.country_id, matchedState.state_id);
+      setCities(citiesList);
+
+      const matchedCity = citiesList.find(
+        (c) =>
+          normalize(c.city_name) === normalize(geo.city) ||
+          normalize(c.city_name).includes(normalize(geo.city)) ||
+          normalize(geo.city).includes(normalize(c.city_name))
+      );
+      if (matchedCity) {
+        setGeoData((prev) => ({ ...prev, cityId: matchedCity.city_id }));
+        setGeoErrors({});
+        toast.success('Ubicación autocompletada');
+      } else {
+        toast.info(`Ciudad "${geo.city}" no encontrada. Selecciónala manualmente.`);
+      }
+    } catch {
+      toast.error('Error al calcular la dirección');
+    } finally {
+      setIsFillingGeo(false);
+    }
+  }, [latValue, lngValue, sv1, countries]);
+
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   const handleStep1 = (data: Step1FormData) => {
@@ -440,8 +568,6 @@ export default function EditarTiendaPage({
 
     setIsSubmitting(true);
 
-    const coords = extractCoordsFromGoogleMapsUrl(step1Data.google_maps_url);
-
     // Build phone dial codes from ISO
     const storeDialCode = step1Data.phoneCountry
       ? `+${getCountryCallingCode(step1Data.phoneCountry as CountryCode)}`
@@ -455,9 +581,9 @@ export default function EditarTiendaPage({
         store_id: storeId,
         name: step1Data.name,
         city_id: geoData.cityId,
-        address: step1Data.google_maps_url,
-        latitude: coords?.lat ?? 0,
-        longitude: coords?.lng ?? 0,
+        address: step1Data.address,
+        latitude: step1Data.latitude,
+        longitude: step1Data.longitude,
         phone_country_code: step1Data.phoneNumber ? storeDialCode : null,
         phone_number: step1Data.phoneNumber || null,
         responsible_first_name: data.responsible_first_name,
@@ -554,14 +680,56 @@ export default function EditarTiendaPage({
                 </div>
 
                 <div>
-                  <FigmaLabel>Direccion exacta con google maps</FigmaLabel>
-                  <FigmaInput
-                    placeholder="Introduce el enlace de google maps"
-                    icon={<MapPin className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />}
-                    error={!!err1.google_maps_url}
-                    {...reg1('google_maps_url')}
+                  <FigmaLabel>Ubicación de la tienda</FigmaLabel>
+                  <div
+                    className={`flex items-center gap-[10px] w-full h-[52px] bg-[#F0F0F3] rounded-[8px] px-[16px] ${
+                      err1.address || err1.latitude ? 'ring-1 ring-[#FF4163]' : ''
+                    }`}
+                  >
+                    <Navigation className="w-[24px] h-[24px] text-[#838383] flex-shrink-0" />
+                    <input
+                      className="flex-1 bg-transparent text-[18px] text-[#1D1D1D] placeholder:text-[#838383] outline-none h-full"
+                      placeholder="10.2451, -68.0087"
+                      value={locationInput}
+                      onChange={(e) => handleLocationChange(e.target.value)}
+                    />
+                  </div>
+                  {/* Helper text OR resolved address */}
+                  {resolvedAddress ? (
+                    <p className="text-[13px] text-[#228D70] mt-1 px-1 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      {resolvedAddress}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-[#9CA3AF] mt-1 px-1">
+                      Pega las coordenadas de Google Maps (click derecho en el mapa → copiar coordenadas) o escribe la dirección manualmente
+                    </p>
+                  )}
+                  <FieldError
+                    message={err1.address?.message || err1.latitude?.message}
                   />
-                  <FieldError message={err1.google_maps_url?.message} />
+
+                  {/* Button: visible when valid coords are entered */}
+                  {latValue !== 0 && (
+                    <button
+                      type="button"
+                      onClick={handleFillGeoFromCoords}
+                      disabled={isFillingGeo}
+                      className="mt-2 h-[36px] px-4 text-[13px] font-medium text-white bg-[#0000FF] rounded-[8px] hover:bg-[#0000CC] transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 w-fit"
+                    >
+                      {isFillingGeo ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Completando ubicación...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="w-4 h-4" />
+                          Calcular dirección desde coordenadas
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 

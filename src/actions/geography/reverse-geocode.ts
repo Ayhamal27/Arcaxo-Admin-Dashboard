@@ -12,7 +12,8 @@ export async function reverseGeocodeAction(
   lat: number,
   lng: number
 ): Promise<ReverseGeocodeResult | null> {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  // Prefer a server-side key (no referrer restrictions) over the browser key
+  const apiKey = process.env.GOOGLE_MAPS_GEOCODING_KEY ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return null;
 
   try {
@@ -21,7 +22,10 @@ export async function reverseGeocodeAction(
     );
     const data = await res.json();
 
-    if (data.status !== 'OK' || !data.results?.length) return null;
+    if (data.status !== 'OK' || !data.results?.length) {
+      console.error('[reverseGeocodeAction] API status:', data.status, data.error_message ?? '');
+      return null;
+    }
 
     const result = data.results[0];
     const components: { long_name: string; short_name: string; types: string[] }[] =
