@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, use } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,7 +37,6 @@ export default function LoginPage({
   const { locale } = use(params);
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
-  const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -75,7 +73,7 @@ export default function LoginPage({
       }
 
       localStorage.setItem('locale', locale);
-      router.push(`/${locale}/stores`);
+      window.location.href = `/${locale}/stores`;
     } catch (err) {
       setGeneralError(err instanceof Error ? err.message : 'Error inesperado');
       setIsLoading(false);
