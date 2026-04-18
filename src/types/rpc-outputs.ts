@@ -49,6 +49,8 @@ export interface RpcAdminGetStoreDetailOutput extends Store {
   open_session_installer_name?: string | null;
   city_name?: string;
   state_name?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface RpcAdminUpdateStoreOutput {

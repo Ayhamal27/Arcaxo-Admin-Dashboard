@@ -16,7 +16,7 @@ export function TooltipHint({ text }: TooltipHintProps) {
         size={12}
         className="text-[#9CA3AF] cursor-pointer"
         onMouseEnter={(e) => {
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          const rect = (e.currentTarget as Element).getBoundingClientRect();
           setPos({ x: rect.left + rect.width / 2, y: rect.bottom });
         }}
         onMouseLeave={() => setPos(null)}
