@@ -9,7 +9,12 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['172.16.0.90'],
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', '172.16.0.90:3000', 'cloud.admin.arcaxo.com'],
+      allowedOrigins: [
+        'localhost:3000',
+        '172.16.0.90:3000',
+        'cloud.admin.arcaxo.com',
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') ?? '',
+      ].filter(Boolean) as string[],
       bodySizeLimit: '6mb',
     },
   },
