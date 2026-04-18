@@ -13,6 +13,12 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
+  // Server Actions are POST requests identified by the Next-Action header.
+  // They handle their own auth via RPC + RLS — never redirect them.
+  if (request.method === 'POST' && request.headers.has('next-action')) {
+    return response;
+  }
+
   // Extraer locale del pathname
   const localeMatch = pathname.match(/^\/(es|en)(\/|$)/);
   const locale = localeMatch ? localeMatch[1] : 'es';

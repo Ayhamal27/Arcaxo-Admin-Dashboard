@@ -38,11 +38,15 @@ export const updateSession = async (request: NextRequest): Promise<UpdateSession
     }
   );
 
-  // Validates the session and refreshes tokens if needed.
-  const { data, error } = await supabase.auth.getUser();
+  // getSession() reads the JWT locally — no network call unless the token is
+  // expired and a refresh is needed. This avoids concurrent-request race
+  // conditions caused by Next.js prefetching all sidebar links simultaneously,
+  // which would trigger parallel getUser() network calls to Supabase and cause
+  // some of them to fail → spurious redirects to login.
+  const { data: { session } } = await supabase.auth.getSession();
 
   return {
     response: supabaseResponse,
-    authenticated: !error && !!data.user,
+    authenticated: !!session,
   };
 };
