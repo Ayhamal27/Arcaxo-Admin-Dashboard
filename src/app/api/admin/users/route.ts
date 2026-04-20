@@ -139,7 +139,8 @@ export async function POST(request: NextRequest) {
     // Use service-role client for all RPC + Auth admin operations.
     const adminClient = createServerClient();
 
-    const { data: accessGateData, error: accessGateError } = await adminClient.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: accessGateData, error: accessGateError } = await (adminClient as any).rpc(
       'rpc_user_access_gate',
       {
         p_required_scope: 'web_panel',
@@ -218,7 +219,8 @@ export async function POST(request: NextRequest) {
 
     createdAuthUserId = createdUserId;
 
-    const { data: profileData, error: profileError } = await adminClient.rpc(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: profileData, error: profileError } = await (adminClient as any).rpc(
       'rpc_upsert_user_profile',
       {
         p_user_id: createdUserId,
