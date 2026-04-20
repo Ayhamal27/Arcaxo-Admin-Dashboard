@@ -13,6 +13,7 @@ import {
   isValidPhoneNumber as libIsValid,
   type CountryCode,
 } from 'libphonenumber-js';
+import { createBrowserClient } from '@supabase/ssr';
 import { Breadcrumb } from '@/components/layout/Breadcrumb';
 import { listCountriesAction, CountryOption } from '@/actions/geography/list-countries';
 import { listStatesAction, StateOption } from '@/actions/geography/list-states';
@@ -515,9 +516,20 @@ export default function NuevoUsuarioPage({
         city_id: geoData.cityId!,
       };
 
+      // Get current (auto-refreshed) access token so the API route can
+      // authenticate the caller without relying on cookie refresh in API routes.
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { session } } = await supabase.auth.getSession();
+
       const response = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
