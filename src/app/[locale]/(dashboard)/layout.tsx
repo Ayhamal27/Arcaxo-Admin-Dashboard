@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useSidebarStore } from '@/lib/stores/sidebar-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -14,6 +16,25 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
   const { locale } = use(params);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const collapsed = useSidebarStore((s) => s.collapsed);
+  const clearUser = useAuthStore((s) => s.clearUser);
+
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_OUT') {
+          clearUser();
+          window.location.href = `/${locale}/login`;
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [locale, clearUser]);
 
   return (
     <div className="min-h-screen bg-[#FBFBFF]">

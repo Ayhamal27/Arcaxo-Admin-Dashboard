@@ -83,6 +83,11 @@ export async function callRpc<T = unknown>(
 ): Promise<T> {
   const client = await createServerAuthClient();
 
+  // supabase.rpc() does NOT auto-refresh an expired access token in SSR context.
+  // Calling getSession() first ensures the token is refreshed before the RPC call,
+  // preventing "Invalid authentication credentials" errors on expired sessions.
+  await client.auth.getSession();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await client.rpc(rpcName as any, params as any);
 
