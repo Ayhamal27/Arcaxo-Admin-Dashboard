@@ -122,6 +122,10 @@ export async function POST(request: NextRequest) {
   let createdAuthUserId: string | null = null;
 
   try {
+    // Validate caller identity — getUser() makes a network call to verify the JWT.
+    // We use a dedicated client solely for this; RPC calls below go through the
+    // service-role adminClient to avoid supabase-js global-header/auth-state
+    // conflicts that can cause PostgREST to reject the user's JWT in API routes.
     const requesterClient = await createRequesterClient(request);
     const {
       data: { user: requesterUser },
@@ -132,8 +136,10 @@ export async function POST(request: NextRequest) {
       return errorResponse(401, 'unauthenticated', 'Authentication required');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: accessGateData, error: accessGateError } = await (requesterClient as any).rpc(
+    // Use service-role client for all RPC + Auth admin operations.
+    const adminClient = createServerClient();
+
+    const { data: accessGateData, error: accessGateError } = await adminClient.rpc(
       'rpc_user_access_gate',
       {
         p_required_scope: 'web_panel',
@@ -168,7 +174,6 @@ export async function POST(request: NextRequest) {
 
     const payload = CreateAdminUserSchema.parse(rawBody);
     const agentScope = resolveAgentScope(payload.role as ProfileRole, payload.agent_scope);
-    const adminClient = createServerClient();
 
     let createdUserId: string;
     let createdEmail = payload.email;
@@ -213,8 +218,7 @@ export async function POST(request: NextRequest) {
 
     createdAuthUserId = createdUserId;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profileData, error: profileError } = await (requesterClient as any).rpc(
+    const { data: profileData, error: profileError } = await adminClient.rpc(
       'rpc_upsert_user_profile',
       {
         p_user_id: createdUserId,
