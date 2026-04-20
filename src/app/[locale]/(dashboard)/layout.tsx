@@ -25,15 +25,37 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
     );
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        if (event === 'SIGNED_OUT') {
-          clearUser();
-          window.location.href = `/${locale}/login`;
-        }
+      if (event === 'SIGNED_OUT') {
+        clearUser();
+        window.location.href = `/${locale}/login`;
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Catch UnrecognizedActionError (stale server action IDs after deployment)
+    // and AUTH_EXPIRED errors that escape React Query (direct server action calls).
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const err = event.reason;
+      if (
+        err?.name === 'UnrecognizedActionError' ||
+        (err instanceof Error && err.message.includes('was not found on the server'))
+      ) {
+        event.preventDefault();
+        window.location.reload();
+      } else if (err instanceof Error && err.message === 'AUTH_EXPIRED') {
+        event.preventDefault();
+        supabase.auth.signOut().then(() => {
+          clearUser();
+          window.location.href = `/${locale}/login?expired=true`;
+        });
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
   }, [locale, clearUser]);
 
   return (

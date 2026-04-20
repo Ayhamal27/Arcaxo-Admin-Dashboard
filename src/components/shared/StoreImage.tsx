@@ -20,6 +20,7 @@ export function StoreImage({ src, alt, size = 71 }: StoreImageProps) {
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoaded(false);
   }, [resolvedSrc]);
 

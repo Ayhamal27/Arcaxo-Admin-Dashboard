@@ -348,6 +348,7 @@ export default function NuevaTiendaPage({
     defaultValues: { phoneCountry: 'VE', phoneNumber: '', address: '', latitude: 0, longitude: 0 },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const phoneCountry1 = w1('phoneCountry');
   const phoneNumber1 = w1('phoneNumber');
   const latValue = w1('latitude');

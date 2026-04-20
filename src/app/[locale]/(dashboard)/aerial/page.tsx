@@ -32,23 +32,6 @@ function getStatusColor(status: string): string {
   return STATUS_COLOR[status] ?? '#667085';
 }
 
-// ─── Sensor status colors ─────────────────────────────────────────────────────
-
-const SENSOR_STATUS_COLOR: Record<string, string> = {
-  active: '#228D70',
-  installed: '#228D70',
-  operational: '#228D70',
-  inactive: '#FF4163',
-  uninstalled: '#FF4163',
-  failed: '#FF4163',
-  maintenance: '#F59E0B',
-  connecting: '#667085',
-};
-
-function getSensorStatusColor(status: string): string {
-  return SENSOR_STATUS_COLOR[status] ?? '#667085';
-}
-
 function formatVisitDate(dateStr: string, locale: string): string {
   return new Date(dateStr).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-VE', {
     day: 'numeric',
@@ -156,8 +139,11 @@ function MapViewController({
 }) {
   const map = useMap();
   const callbackRef = useRef(onViewportChange);
-  callbackRef.current = onViewportChange;
   const initRef = useRef(false);
+
+  useEffect(() => {
+    callbackRef.current = onViewportChange;
+  });
 
   useEffect(() => {
     if (!map) return;
@@ -210,7 +196,10 @@ function StoreMarkers({
   const markersRef = useRef<google.maps.Marker[]>([]);
   const storeKeyRef = useRef('');
   const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  });
 
   useEffect(() => {
     if (!map || typeof google === 'undefined') return;

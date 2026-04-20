@@ -31,7 +31,6 @@ import { Pagination } from '@/components/shared/Pagination';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { StoreImage } from '@/components/shared/StoreImage';
-import { RpcAdminListStoresOutputItem } from '@/types/rpc-outputs';
 import { RpcAdminListStoreSensorsOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
 import { format, isValid } from 'date-fns';

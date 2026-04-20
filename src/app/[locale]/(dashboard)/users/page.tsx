@@ -13,7 +13,6 @@ import { RoleBadge } from '@/components/shared/RoleBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { RpcAdminListUsersOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
 

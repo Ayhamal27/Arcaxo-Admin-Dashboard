@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, Suspense } from 'react';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useSearchParams } from 'next/navigation';
 import { loginAction } from '@/actions/auth/login';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { LoginCard } from '@/components/auth/login-card';
@@ -73,6 +74,7 @@ export default function LoginPage({
       }
 
       localStorage.setItem('locale', locale);
+      // eslint-disable-next-line react-hooks/immutability
       window.location.href = `/${locale}/stores`;
     } catch (err) {
       setGeneralError(err instanceof Error ? err.message : 'Error inesperado');
@@ -87,6 +89,10 @@ export default function LoginPage({
         <ArcaxoLogo className="h-[28px] w-auto" />
         <p className="text-[14px] text-[#667085]">{t('signInMessage')}</p>
       </div>
+
+      <Suspense>
+        <ExpiredSessionBanner />
+      </Suspense>
 
       {generalError && <ErrorMessage message={generalError} />}
 
@@ -142,6 +148,16 @@ export default function LoginPage({
       {/* Language switcher */}
       <LanguageSwitcher locale={locale} />
     </LoginCard>
+  );
+}
+
+function ExpiredSessionBanner() {
+  const searchParams = useSearchParams();
+  if (searchParams.get('expired') !== 'true') return null;
+  return (
+    <div className="mb-4 rounded-[8px] border border-[#FF4163]/30 bg-[#FFF0F3] px-4 py-3 text-[13px] text-[#FF4163]">
+      Tu sesión ha expirado. Por favor, inicia sesión nuevamente.
+    </div>
   );
 }
 

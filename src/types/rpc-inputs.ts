@@ -216,9 +216,8 @@ export interface RpcAdminResetUserPasswordInput {
  * GEOGRAPHY domain RPC inputs
  */
 
-export interface RpcGeoListRegionsInput {
-  // No parameters
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface RpcGeoListRegionsInput {}
 
 export interface RpcGeoListSubregionsInput {
   p_region_id?: number | null;

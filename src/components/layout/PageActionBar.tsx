@@ -74,7 +74,7 @@ interface FilterSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement
   label?: string;
 }
 
-export function FilterSelect({ icon, label, children, className, ...props }: FilterSelectProps) {
+export function FilterSelect({ icon, children, className, ...props }: FilterSelectProps) {
   return (
     <div className="relative">
       {icon && (

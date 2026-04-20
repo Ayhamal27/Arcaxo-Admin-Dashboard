@@ -1,7 +1,7 @@
 'use server';
 
 import { callRpc } from '@/lib/supabase/rpc';
-import { ProfileRole, ProfileStatus } from '@/types/database';
+import { ProfileRole } from '@/types/database';
 import { z } from 'zod';
 import { RpcUpsertUserProfileOutput } from '@/types/rpc-outputs';
 

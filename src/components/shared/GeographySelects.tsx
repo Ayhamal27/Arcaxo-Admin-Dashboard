@@ -50,6 +50,7 @@ export function GeographySelects({
   // Load states when country changes
   useEffect(() => {
     if (!countryId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStates([]);
       setCities([]);
       return;
@@ -65,6 +66,7 @@ export function GeographySelects({
   // Load cities when state changes
   useEffect(() => {
     if (!countryId || !stateId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCities([]);
       return;
     }

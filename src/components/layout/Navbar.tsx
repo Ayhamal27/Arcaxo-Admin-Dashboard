@@ -38,6 +38,7 @@ function LocaleDropdown({ locale }: { locale: string }) {
     const newPath = `/${targetLocale}${strippedPath}`;
 
     // Hard navigation so the server fully reloads next-intl messages for the new locale
+    // eslint-disable-next-line react-hooks/immutability
     window.location.href = newPath;
   };
 

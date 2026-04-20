@@ -15,7 +15,6 @@ import type {
   RpcUpsertUserProfileInput,
   RpcUserAccessGateInput,
   RpcUserActiveSessionInput,
-  RpcGeoListRegionsInput,
   RpcGeoListSubregionsInput,
   RpcGeoListCountriesInput,
   RpcGeoListStatesInput,
@@ -84,15 +83,28 @@ export async function callRpc<T = unknown>(
   const client = await createServerAuthClient();
 
   // supabase.rpc() does NOT auto-refresh an expired access token in SSR context.
-  // Calling getSession() first ensures the token is refreshed before the RPC call,
-  // preventing "Invalid authentication credentials" errors on expired sessions.
-  await client.auth.getSession();
+  // Calling getSession() first ensures the token is refreshed if the access token
+  // is expired but the refresh token is still valid.
+  const { data: { session } } = await client.auth.getSession();
+
+  if (!session) {
+    // Both tokens are fully expired — client must re-authenticate.
+    throw new Error('AUTH_EXPIRED');
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await client.rpc(rpcName as any, params as any);
 
   if (error) {
     console.error(`[RPC Error] ${rpcName}:`, error);
+    // Surface auth errors with the same sentinel so clients can redirect to login.
+    if (
+      error.code === 'PGRST301' ||
+      (error.message ?? '').toLowerCase().includes('invalid') ||
+      (error.message ?? '').toLowerCase().includes('jwt')
+    ) {
+      throw new Error('AUTH_EXPIRED');
+    }
     throw new Error(error.message || `RPC ${rpcName} failed`);
   }
 
@@ -204,7 +216,7 @@ export const rpcUserActiveSession = (p: RpcUserActiveSessionInput = {}) =>
 
 // ─── GEOGRAPHY ───────────────────────────────────────────────────────────────
 
-export const rpcGeoListRegions = (_p: RpcGeoListRegionsInput = {}) =>
+export const rpcGeoListRegions = () =>
   callRpc<RpcGeoListRegionsOutputItem[]>('rpc_geo_list_regions');
 
 export const rpcGeoListSubregions = (p: RpcGeoListSubregionsInput = {}) =>

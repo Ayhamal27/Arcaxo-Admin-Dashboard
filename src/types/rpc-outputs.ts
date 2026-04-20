@@ -1,4 +1,4 @@
-import { Profile, Store, StoreContext, City, State, Country, Region, Subregion } from './entities';
+import { Profile, Store, StoreContext } from './entities';
 import { StoreToggleAction } from './database';
 
 /**
@@ -133,7 +133,7 @@ export interface RpcAdminListStoreSensorsOutputItem {
   total_count: number;
 }
 
-export interface RpcStoreInstallationContextGetOutput extends StoreContext {}
+export type RpcStoreInstallationContextGetOutput = StoreContext;
 
 export interface RpcStoreInstallationContextUpdateOutput {
   store_id?: string;

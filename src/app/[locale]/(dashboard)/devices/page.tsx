@@ -13,7 +13,6 @@ import { Pagination } from '@/components/shared/Pagination';
 import { TableSkeleton } from '@/components/shared/TableSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FilterSelect } from '@/components/layout/PageActionBar';
-import { RpcAdminListSensorsOutputItem } from '@/types/rpc-outputs';
 import Link from 'next/link';
 import { format, isValid } from 'date-fns';
 

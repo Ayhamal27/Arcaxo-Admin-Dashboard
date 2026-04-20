@@ -461,6 +461,7 @@ export default function NuevoUsuarioPage({
     defaultValues: { phoneCountry: 'VE', phoneNumber: '' },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const phoneCountry = w1('phoneCountry');
   const phoneNumber = w1('phoneNumber');
 
